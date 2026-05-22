@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>交通数据控制台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background-color: #FDFCF0;
+    }
+
+    .nav-btn {
+      transition: all 0.3s ease;
+      border-radius: 16px;
+      margin-bottom: 8px;
+      color: #5F6368;
+    }
+    .nav-btn:hover { background-color: #F0F4F8; }
+    .nav-btn.active {
+      background-color: #FFB7B2 !important;
+      color: #FFFFFF !important;
+      box-shadow: 0 4px 12px rgba(255, 183, 178, 0.4);
+      font-weight: bold;
+    }
+
+    .btn-search {
+      background-color: #B2E2F2;
+      transition: transform 0.2s;
+    }
+    .btn-search:hover {
+      background-color: #91D1E6;
+      transform: translateY(-2px);
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      border: 2px solid #FFFFFF;
+      border-radius: 32px;
+    }
+
+    .scope-btn {
+      color: #747D8C;
+      transition: all 0.2s ease;
+    }
+    .scope-btn:hover { background-color: #F8FAFC; }
+    .scope-btn.active {
+      background-color: #E1BEE7;
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(225, 190, 231, 0.45);
+    }
+
+    .summary-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 248, 240, 0.92));
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 24px;
+    }
+
+    /* ── 用户画像专属样式 ── */
+    .profile-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .profile-table thead th {
+      background: #F7F9FC;
+      color: #8A95A3;
+      font-weight: 700;
+      padding: 10px 14px;
+      text-align: left;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .profile-table tbody tr {
+      border-bottom: 1px solid #F0F2F5;
+      transition: background 0.15s;
+    }
+    .profile-table tbody tr:hover { background: #FFF5F5; }
+    .profile-table tbody td {
+      padding: 9px 14px;
+      color: #4A5568;
+      white-space: nowrap;
+    }
+    .star-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .star-5 { background: #FFE0B2; color: #E65100; }
+    .star-4 { background: #FFF9C4; color: #F57F17; }
+    .star-3 { background: #E8F5E9; color: #2E7D32; }
+    .star-2 { background: #E3F2FD; color: #1565C0; }
+    .star-1 { background: #F3E5F5; color: #6A1B9A; }
+
+    /* 指标卡片 */
+    .metric-card {
+      background: white;
+      border-radius: 24px;
+      padding: 20px 24px;
+      border: 2px solid #F0F2F5;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .metric-label { font-size: 12px; color: #A0AEC0; font-weight: 600; letter-spacing: 0.05em; }
+    .metric-value { font-size: 28px; font-weight: 900; color: #2D3748; line-height: 1; }
+    .metric-unit  { font-size: 13px; color: #A0AEC0; }
+
+    /* 搜索结果淡入 */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp 0.45s ease both; }
+
+    /* 图表容器 */
+    .chart-box {
+      background: white;
+      border-radius: 28px;
+      border: 2px solid #F0F2F5;
+      padding: 24px;
+    }
+    .chart-box h3 { font-size: 14px; font-weight: 700; color: #718096; margin-bottom: 12px; }
+
+    /* 时段进度条 */
+    .period-bar-wrap { display: flex; flex-direction: column; gap: 10px; }
+    .period-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .period-name { width: 36px; color: #718096; font-weight: 600; flex-shrink: 0; }
+    .period-track { flex: 1; height: 14px; background: #F0F2F5; border-radius: 999px; overflow: hidden; }
+    .period-fill  { height: 100%; border-radius: 999px; transition: width 0.8s ease; }
+    .period-cnt   { width: 40px; text-align: right; color: #4A5568; font-weight: 700; font-size: 13px; }
+
+    /* 评分进度条 */
+    .score-row  { display: flex; align-items: center; gap: 10px; font-size: 13px; margin-bottom: 8px; }
+    .score-name { width: 120px; color: #718096; font-size: 12px; flex-shrink: 0; }
+    .score-track { flex: 1; height: 10px; background: #F0F2F5; border-radius: 999px; overflow: hidden; }
+    .score-fill  { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #B2E2F2, #CE93D8); transition: width 0.8s ease; }
+    .score-val   { width: 20px; text-align: right; font-weight: 700; color: #2D3748; }
+  </style>
+</head>
+
+<body class="text-slate-700">
+  <div class="flex h-screen p-4 gap-4">
+
+    <!-- ── 左侧导航 ── -->
+    <div class="w-72 bg-white rounded-[40px] p-8 flex flex-col gap-10 shadow-sm border border-slate-100">
+      <div class="px-2 py-4 border-b border-slate-50">
+        <h1 class="text-4xl font-black text-slate-800 tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-leaf text-4xl text-green-300"></i>智能交通
+        </h1>
+      </div>
+
+      <nav id="nav-container" class="flex flex-col">
+        <button onclick="showScreen('dash', this)" class="nav-btn active flex items-center p-4 text-lg">
+          <i class="fa-solid fa-user-astronaut w-8"></i> 用户画像
+        </button>
+        <button onclick="showScreen('search', this)" class="nav-btn flex items-center p-4 text-lg">
+          <i class="fa-solid fa-route w-8"></i> 道路情况
+        </button>
+        <button onclick="showScreen('table', this)" class="nav-btn flex items-center p-4 text-lg">
+          <i class="fa-solid fa-bolt w-8"></i> 超速检测
+        </button>
+        <button onclick="showScreen('report', this)" class="nav-btn flex items-center p-4 text-lg">
+          <i class="fa-solid fa-map-location-dot w-8"></i> 高峰指南
+        </button>
+      </nav>
+
+      <div class="mt-auto bg-orange-50 p-6 rounded-3xl">
+        <p class="text-xs text-orange-400 font-bold uppercase tracking-widest">系统状态</p>
+        <p class="text-slate-600 text-sm mt-1">服务器运行良好</p>
+      </div>
+    </div>
+
+    <!-- ── 主内容区 ── -->
+    <div class="flex-1 overflow-y-auto pr-2">
+
+      <!-- ══════════════════════════════════════ -->
+      <!--  用户画像页                            -->
+      <!-- ══════════════════════════════════════ -->
+      <div id="screen-dash" class="screen px-2 py-6">
+
+        <div class="mb-8">
+          <h2 class="text-4xl font-bold text-slate-800">用户画像 <span class="text-pink-300">中心</span></h2>
+          <p class="text-slate-400 mt-2">司机行为分析 · 评分系统 · devid 精准检索</p>
+        </div>
+
+        <!-- 搜索栏 -->
+        <div class="flex gap-4 mb-8">
+          <input id="devidInput" type="number" placeholder="输入 devid 搜索司机 (如: 3012099)"
+            class="bg-white border-2 border-slate-100 p-4 rounded-2xl flex-1 max-w-sm
+                   focus:outline-none focus:border-pink-200 shadow-sm transition-all text-base"
+            onkeydown="if(event.key==='Enter') searchDriver()">
+          <button onclick="searchDriver()"
+            class="bg-pink-200 hover:bg-pink-300 text-slate-700 font-bold px-10 py-4
+                   rounded-2xl shadow-lg shadow-pink-100 transition-all hover:-translate-y-0.5">
+            <i class="fa-solid fa-magnifying-glass mr-2"></i>查询
+          </button>
+        </div>
+
+        <!-- 搜索结果面板 -->
+        <div id="driver-result" class="hidden mb-10"></div>
+
+        <!-- 前20行数据表格 -->
+        <div class="glass-card p-6 shadow-xl shadow-slate-100/50">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-700">
+              <i class="fa-solid fa-table-list text-pink-300 mr-2"></i>数据预览（前20条）
+            </h3>
+            <span id="table-status" class="text-xs text-slate-400">加载中...</span>
+          </div>
+          <div class="overflow-x-auto rounded-2xl">
+            <table class="profile-table">
+              <thead>
+                <tr>
+                  <th>devid</th>
+                  <th>打卡天数</th>
+                  <th>完成订单数</th>
+                  <th>日均订单</th>
+                  <th>总里程(km)</th>
+                  <th>均速(km/h)</th>
+                  <th>主要活跃时段</th>
+                  <th>活跃程度</th>
+                  <th>超速率</th>
+                  <th>超速规律</th>
+                  <th>绕路率</th>
+                  <th>整体打分</th>
+                  <th>司机评级</th>
+                </tr>
+              </thead>
+              <tbody id="profile-tbody">
+                <tr><td colspan="13" class="text-center py-8 text-slate-300">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════ -->
+      <!--  道路情况页                            -->
+      <!-- ══════════════════════════════════════ -->
+      <div id="screen-search" class="screen hidden">
+        <div class="mb-10">
+          <h2 class="text-4xl font-bold text-slate-800">道路情况 <span class="text-blue-300">检索</span></h2>
+          <p class="text-slate-400 mt-2">实时分析路段每三小时流量变化</p>
+        </div>
+
+        <div class="flex gap-4 mb-10">
+          <input id="roadIdInput" type="number" placeholder="输入道路 ID（如：3）"
+            class="bg-white border-2 border-slate-100 p-4 rounded-2xl w-80 focus:outline-none focus:border-blue-200 shadow-sm transition-all">
+          <button onclick="fetchData()"
+            class="btn-search text-slate-700 font-bold px-10 py-4 rounded-2xl shadow-lg shadow-blue-100">
+            开始分析
+          </button>
+        </div>
+
+        <div class="glass-card p-10 shadow-xl shadow-slate-100/50 h-[500px]">
+          <canvas id="trafficChart"></canvas>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════ -->
+      <!--  超速检测页                            -->
+      <!-- ══════════════════════════════════════ -->
+      <div id="screen-table" class="screen hidden px-6 py-10">
+        <div class="mb-8 flex items-end justify-between gap-4">
+          <div>
+            <h2 class="text-4xl font-bold">超速检测 <span class="text-purple-300">系统</span></h2>
+            <p class="text-slate-400 mt-2">按订单、司机、道路三个维度识别异常驾驶行为</p>
+          </div>
+          <div class="bg-white border-2 border-slate-100 rounded-2xl p-1 flex gap-1 shadow-sm">
+            <button id="scopeOrderBtn" onclick="switchSpeedingScope('order')"
+              class="scope-btn active px-5 py-3 rounded-xl font-black text-sm">
+              <i class="fa-solid fa-receipt mr-2"></i>订单
+            </button>
+            <button id="scopeDriverBtn" onclick="switchSpeedingScope('driver')"
+              class="scope-btn px-5 py-3 rounded-xl font-black text-sm">
+              <i class="fa-solid fa-id-card mr-2"></i>司机
+            </button>
+            <button id="scopeRoadBtn" onclick="switchSpeedingScope('road')"
+              class="scope-btn px-5 py-3 rounded-xl font-black text-sm">
+              <i class="fa-solid fa-road mr-2"></i>道路
+            </button>
+          </div>
+        </div>
+
+        <div id="speedingStatus" class="hidden mb-6 p-4 rounded-2xl bg-red-50 text-red-400 font-bold"></div>
+
+        <div id="speedingSummaryCards" class="grid grid-cols-4 gap-4 mb-8">
+          <div class="glass-card p-6 shadow-sm">
+            <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">总行程数</p>
+            <p id="totalTrips" class="text-3xl font-black text-slate-800 mt-2">--</p>
+          </div>
+          <div class="glass-card p-6 shadow-sm">
+            <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">超速行程</p>
+            <p id="speedingTrips" class="text-3xl font-black text-pink-300 mt-2">--</p>
+          </div>
+          <div class="glass-card p-6 shadow-sm">
+            <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">超速率</p>
+            <p id="speedingRate" class="text-3xl font-black text-purple-300 mt-2">--</p>
+          </div>
+          <div class="glass-card p-6 shadow-sm">
+            <p id="summaryFourthLabel" class="text-xs text-slate-400 font-bold uppercase tracking-widest">高风险司机</p>
+            <p id="summaryFourthValue" class="text-3xl font-black text-orange-300 mt-2">--</p>
+          </div>
+        </div>
+
+        <div id="speedingPanelOrder" class="speeding-panel">
+          <div class="glass-card p-8 shadow-xl shadow-slate-100/50">
+            <h3 class="text-2xl font-black text-slate-800 mb-6">高风险时间段</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead class="text-xs text-slate-400 tracking-widest border-b border-slate-100">
+                  <tr>
+                    <th class="py-3">时间段</th>
+                    <th class="py-3">总行程</th>
+                    <th class="py-3">超速行程</th>
+                    <th class="py-3">超速率</th>
+                  </tr>
+                </thead>
+                <tbody id="timeSpeedingBody" class="divide-y divide-slate-100">
+                  <tr>
+                    <td colspan="4" class="py-8 text-center text-slate-400 font-bold">等待加载</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-6 glass-card p-8 shadow-xl shadow-slate-100/50">
+            <div class="flex items-center justify-between gap-4 mb-6">
+              <h3 class="text-2xl font-black text-slate-800">订单查询</h3>
+              <div class="flex items-center gap-3 min-w-[520px]">
+                <input id="orderIdInput" type="text" placeholder="输入订单号"
+                  class="bg-white border-2 border-slate-100 h-12 px-4 rounded-2xl flex-1 min-w-0 focus:outline-none focus:border-purple-200 shadow-sm transition-all">
+                <button onclick="fetchOrderSpeeding()"
+                  class="btn-search text-slate-700 font-bold px-6 h-12 rounded-2xl shadow-lg shadow-blue-100">
+                  查询
+                </button>
+              </div>
+            </div>
+            <div id="orderResultWrap" class="hidden overflow-x-auto">
+              <table class="w-full text-left">
+                <thead class="text-xs text-slate-400 tracking-widest border-b border-slate-100">
+                  <tr>
+                    <th class="py-3">行程 ID</th>
+                    <th class="py-3">司机 ID</th>
+                    <th class="py-3">日期</th>
+                    <th class="py-3">开始时间</th>
+                    <th class="py-3">最高速度</th>
+                    <th class="py-3">状态</th>
+                  </tr>
+                </thead>
+                <tbody id="orderTableBody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="speedingPanelDriver" class="speeding-panel hidden">
+          <div class="grid grid-cols-[1.1fr_0.9fr] gap-6">
+            <div class="glass-card p-8 shadow-xl shadow-slate-100/50">
+              <div class="flex items-center justify-between gap-4 mb-6">
+                <h3 class="text-2xl font-black text-slate-800">高风险司机榜</h3>
+                <div class="flex items-center gap-3">
+                  <select id="leaderboardSort" onchange="loadSpeedingSummary()"
+                    class="bg-white border-2 border-slate-100 h-11 px-4 rounded-2xl text-sm font-bold text-slate-600 focus:outline-none focus:border-purple-200">
+                    <option value="speed">按速度排序</option>
+                    <option value="risk">按风险率排序</option>
+                  </select>
+                  <button onclick="loadSpeedingDashboard()"
+                    class="btn-search h-11 w-11 rounded-2xl shadow-md shadow-blue-100" title="刷新">
+                    <i class="fa-solid fa-rotate-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                  <thead class="text-xs text-slate-400 tracking-widest border-b border-slate-100">
+                    <tr>
+                      <th class="py-3">司机 ID</th>
+                      <th class="py-3">最高速度（km/h）</th>
+                      <th class="py-3">风险率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="leaderboardBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="glass-card p-8 shadow-xl shadow-slate-100/50">
+              <h3 class="text-2xl font-black text-slate-800 mb-6">司机查询</h3>
+              <div class="flex gap-3 mb-6">
+                <input id="driverIdInput" type="text" placeholder="输入司机 ID"
+                  class="bg-white border-2 border-slate-100 p-4 rounded-2xl flex-1 min-w-0 focus:outline-none focus:border-purple-200 shadow-sm transition-all">
+                <button onclick="fetchDriverSpeeding()"
+                  class="btn-search text-slate-700 font-bold px-6 py-4 rounded-2xl shadow-lg shadow-blue-100">
+                  查询
+                </button>
+              </div>
+              <div id="driverResult" class="space-y-4">
+                <div class="bg-purple-50 rounded-[28px] p-6 border-4 border-white text-slate-400 font-bold">
+                  输入司机 ID 后查看速度标签与超速行程。
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 glass-card p-8 shadow-xl shadow-slate-100/50">
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-2xl font-black text-slate-800">司机行程明细</h3>
+              <span id="tripTableTitle" class="text-sm text-slate-400 font-bold">等待查询</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead class="text-xs text-slate-400 tracking-widest border-b border-slate-100">
+                  <tr>
+                    <th class="py-3">行程 ID</th>
+                    <th class="py-3">日期</th>
+                    <th class="py-3">开始时间</th>
+                    <th class="py-3">最高速度</th>
+                    <th class="py-3">状态</th>
+                  </tr>
+                </thead>
+                <tbody id="tripTableBody" class="divide-y divide-slate-100">
+                  <tr>
+                    <td colspan="5" class="py-8 text-center text-slate-400 font-bold">暂无行程数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="speedingPanelRoad" class="speeding-panel hidden">
+          <div class="grid grid-cols-[0.9fr_1.1fr] gap-6">
+            <div class="glass-card p-8 shadow-xl shadow-slate-100/50">
+              <h3 class="text-2xl font-black text-slate-800 mb-6">道路查询</h3>
+              <div class="flex gap-3 mb-6">
+                <input id="roadSpeedingInput" type="text" placeholder="输入道路 ID"
+                  class="bg-white border-2 border-slate-100 p-4 rounded-2xl flex-1 min-w-0 focus:outline-none focus:border-purple-200 shadow-sm transition-all">
+                <button onclick="fetchRoadSpeeding()"
+                  class="btn-search text-slate-700 font-bold px-6 py-4 rounded-2xl shadow-lg shadow-blue-100">
+                  查询
+                </button>
+              </div>
+              <div id="roadResult" class="space-y-4">
+                <div class="bg-purple-50 rounded-[28px] p-6 border-4 border-white text-slate-400 font-bold">
+                  输入道路 ID 后查看道路超速比率和风险状态。
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-card p-8 shadow-xl shadow-slate-100/50">
+              <div class="flex items-center justify-between gap-4 mb-6">
+                <h3 class="text-2xl font-black text-slate-800">高风险道路</h3>
+                <div class="flex items-center gap-3">
+                  <select id="roadSort" onchange="loadRoadSpeeding()"
+                    class="bg-white border-2 border-slate-100 h-11 px-4 rounded-2xl text-sm font-bold text-slate-600 focus:outline-none focus:border-purple-200">
+                    <option value="risk">按风险率排序</option>
+                    <option value="speed">按平均速度排序</option>
+                    <option value="orders">按订单数排序</option>
+                  </select>
+                  <button onclick="loadRoadSpeeding()"
+                    class="btn-search h-11 w-11 rounded-2xl shadow-md shadow-blue-100" title="刷新">
+                    <i class="fa-solid fa-rotate-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                  <thead class="text-xs text-slate-400 tracking-widest border-b border-slate-100">
+                    <tr>
+                      <th class="py-3">道路 ID</th>
+                      <th class="py-3">订单数</th>
+                      <th class="py-3">平均速度</th>
+                      <th class="py-3">超速率</th>
+                      <th class="py-3">状态</th>
+                    </tr>
+                  </thead>
+                  <tbody id="roadTableBody" class="divide-y divide-slate-100">
+                    <tr>
+                      <td colspan="5" class="py-8 text-center text-slate-400 font-bold">等待加载</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════ -->
+      <!--  高峰指南页                            -->
+      <!-- ══════════════════════════════════════ -->
+      <div id="screen-report" class="screen hidden px-6 py-10">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <h2 class="text-4xl font-bold">高峰指南 <span class="text-yellow-300">发布</span></h2>
+        </div>
+
+        <div class="mt-8 glass-card p-8">
+          <div class="flex flex-wrap gap-4 items-center">
+            <select id="dateSelect"
+              class="bg-white border-2 border-slate-100 p-3 rounded-2xl w-48 focus:outline-none focus:border-blue-200 shadow-sm transition-all"></select>
+            <button onclick="refreshReport()"
+              class="btn-search text-slate-700 font-bold px-8 py-3 rounded-2xl shadow-lg shadow-blue-100">
+              切换日期
+            </button>
+          </div>
+
+          <div id="summaryCards" class="mt-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4"></div>
+
+          <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-3xl p-6 border border-slate-100">
+              <div class="flex flex-wrap items-center gap-3 justify-between">
+                <h3 class="text-xl font-bold text-slate-800">时段流量 Top10</h3>
+                <div class="flex flex-wrap gap-3">
+                  <select id="slotSelect"
+                    class="bg-white border-2 border-slate-100 p-2 rounded-xl w-40 focus:outline-none focus:border-blue-200 shadow-sm"></select>
+                  <select id="slotLevelSelect"
+                    class="bg-white border-2 border-slate-100 p-2 rounded-xl w-36 focus:outline-none focus:border-blue-200 shadow-sm">
+                    <option value="">全部等级</option>
+                    <option value="1">等级 1</option>
+                    <option value="2">等级 2</option>
+                    <option value="3">等级 3</option>
+                    <option value="4">等级 4</option>
+                    <option value="5">等级 5</option>
+                  </select>
+                  <button onclick="fetchPeakBySlot()"
+                    class="btn-search text-slate-700 font-bold px-5 py-2 rounded-xl shadow">
+                    查询
+                  </button>
+                </div>
+              </div>
+              <div class="mt-3 text-sm text-slate-400" id="slotLabel"></div>
+              <div id="slotTopList" class="mt-4 space-y-2"></div>
+            </div>
+
+            <div class="bg-white rounded-3xl p-6 border border-slate-100">
+              <div class="flex flex-wrap items-center gap-3 justify-between">
+                <h3 class="text-xl font-bold text-slate-800">当日总流量榜</h3>
+                <div class="flex flex-wrap gap-3">
+                  <select id="dailyLevelSelect"
+                    class="bg-white border-2 border-slate-100 p-2 rounded-xl w-36 focus:outline-none focus:border-blue-200 shadow-sm">
+                    <option value="">全部等级</option>
+                    <option value="1">等级 1</option>
+                    <option value="2">等级 2</option>
+                    <option value="3">等级 3</option>
+                    <option value="4">等级 4</option>
+                    <option value="5">等级 5</option>
+                  </select>
+                  <select id="dailyLimitSelect"
+                    class="bg-white border-2 border-slate-100 p-2 rounded-xl w-28 focus:outline-none focus:border-blue-200 shadow-sm">
+                    <option value="10">前10</option>
+                    <option value="20">前20</option>
+                    <option value="30">前30</option>
+                    <option value="40">前40</option>
+                  </select>
+                  <button onclick="fetchDailyTop()"
+                    class="btn-search text-slate-700 font-bold px-5 py-2 rounded-xl shadow">
+                    查询
+                  </button>
+                </div>
+              </div>
+              <div class="mt-3 text-sm text-slate-400" id="dailyLabel"></div>
+              <div id="dailyTopList" class="mt-4 space-y-2 max-h-[360px] overflow-y-auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ──────────────────────────────────────────────────────
+    // 全局配置
+    // ──────────────────────────────────────────────────────
+    let myChart, pieChart;
+    const DEFAULT_SLOT = '10:00-10:30';
+    const API_BASE_URL = 'http://49.52.27.112:8000';
+    let currentSpeedingScope = 'order';
+
+    // ──────────────────────────────────────────────────────
+    // 用户画像常量
+    // ──────────────────────────────────────────────────────
+    const PERIOD_MAP = {
+      morning: '早晨', afternoon: '下午', evening: '傍晚', night: '夜间'
+    };
+    const STAR_LABELS = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
+    const ACTIVE_MAP   = { 1: '不活跃', 2: '较不活跃', 3: '一般活跃', 4: '较活跃', 5: '非常活跃' };
+    const ACTIVE_STYLE = {
+      1: 'background:#F3F4F6;color:#9CA3AF',
+      2: 'background:#DBEAFE;color:#1D4ED8',
+      3: 'background:#D1FAE5;color:#065F46',
+      4: 'background:#FEF3C7;color:#92400E',
+      5: 'background:#FFE4E6;color:#BE123C',
+    };
+
+    // ──────────────────────────────────────────────────────
+    // 导航切换
+    // ──────────────────────────────────────────────────────
+    function showScreen(id, btnElement) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+      document.getElementById('screen-' + id).classList.remove('hidden');
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      btnElement.classList.add('active');
+
+      if (id === 'table') {
+        loadSpeedingDashboard();
+      }
+      if (id === 'report') {
+        initReportControls();
+      }
+    }
+
+    // ──────────────────────────────────────────────────────
+    // 用户画像 - 前20行数据表格
+    // ──────────────────────────────────────────────────────
+    async function loadProfileTable() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/driver-profiles`);
+        const data = await res.json();
+        const tbody = document.getElementById('profile-tbody');
+        const statusEl = document.getElementById('table-status');
+
+        tbody.innerHTML = data.map(d => {
+          const levelClass = `star-${d.active_level}`;
+          const ruleOk = (d.speeding_rule || '').toLowerCase() === 'normal';
+          const ruleColor = ruleOk ? 'color:#2E7D32;background:#E8F5E9' : 'color:#B71C1C;background:#FFEBEE';
+          const detourPct = d.detour_rate !== undefined && d.detour_rate !== ''
+            ? (Number(d.detour_rate) * 100).toFixed(1) + '%' : '-';
+          const speedPct = d.speeding_rate !== undefined && d.speeding_rate !== ''
+            ? (Number(d.speeding_rate) * 100).toFixed(1) + '%' : '-';
+          const speedColor = Number(d.speeding_rate) === 0 ? '#2E7D32' : '#E65100';
+          const detourColor = Number(d.detour_rate) > 0.3 ? '#B71C1C' : '#1565C0';
+          const scoreLevel = d.driver_score_level || '-';
+          const scoreLevelClass = `star-${Math.min(5, Math.max(1, Number(scoreLevel) || 1))}`;
+          return `
+          <tr>
+            <td class="font-bold text-pink-400">${d.devid}</td>
+            <td>${d.day_count}</td>
+            <td>${d.trip_count}</td>
+            <td>${d.daily_trip_avg}</td>
+            <td>${Number(d.precise_total_dist_km).toFixed(1)}</td>
+            <td>${d.precise_avg_speed_kmh}</td>
+            <td><span class="star-badge ${levelClass}">${PERIOD_MAP[d.max_period] || d.max_period}</span></td>
+            <td><span class="star-badge" style="${ACTIVE_STYLE[d.active_level]}">${ACTIVE_MAP[d.active_level] || d.active_level}</span></td>
+            <td class="font-bold" style="color:${speedColor}">${speedPct}</td>
+            <td><span class="star-badge" style="${ruleColor}">${ruleOk ? '正常' : (d.speeding_rule || '-')}</span></td>
+            <td class="font-bold" style="color:${detourColor}">${detourPct}</td>
+            <td><span class="font-bold text-indigo-500">${Number(d.base_score).toFixed(2)}</span></td>
+            <td><span class="star-badge ${scoreLevelClass}">${STAR_LABELS[scoreLevel] || scoreLevel + '级'}</span></td>
+          </tr>`;
+        }).join('');
+        statusEl.textContent = `共展示 ${data.length} 条`;
+      } catch (e) {
+        document.getElementById('profile-tbody').innerHTML =
+          '<tr><td colspan="13" class="text-center py-8 text-red-300">无法连接后端，请确保 FastAPI 已启动</td></tr>';
+        document.getElementById('table-status').textContent = '连接失败';
+      }
+    }
+
+    // ──────────────────────────────────────────────────────
+    // 用户画像 - devid 搜索 & 可视化
+    // ──────────────────────────────────────────────────────
+    async function searchDriver() {
+      const devid = document.getElementById('devidInput').value.trim();
+      if (!devid) return;
+
+      const resultEl = document.getElementById('driver-result');
+      resultEl.classList.remove('hidden');
+      resultEl.innerHTML = `<div class="text-center py-10 text-slate-300">
+        <i class="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>`;
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/driver-profile/${devid}`);
+        if (!res.ok) {
+          resultEl.innerHTML = `<div class="glass-card p-8 text-center text-slate-400">
+            <i class="fa-solid fa-ghost text-4xl text-pink-200 mb-3 block"></i>
+            未找到 devid = ${devid} 的司机记录</div>`;
+          return;
+        }
+        const d = await res.json();
+        renderDriverCard(d, resultEl);
+      } catch (e) {
+        resultEl.innerHTML = `<div class="glass-card p-8 text-center text-red-300">
+          无法连接后端服务，请确保 FastAPI 已启动</div>`;
+      }
+    }
+
+    function renderDriverCard(d, container) {
+      const levelClass = `star-${d.active_level}`;
+      const scoreLevel = d.driver_score_level || '-';
+      const scoreLevelClass = `star-${Math.min(5, Math.max(1, Number(scoreLevel) || 1))}`;
+      const speedPct  = d.speeding_rate !== undefined ? (Number(d.speeding_rate) * 100).toFixed(1) + '%' : '-';
+      const detourPct = d.detour_rate   !== undefined ? (Number(d.detour_rate)   * 100).toFixed(1) + '%' : '-';
+      const ruleOk    = (d.speeding_rule || '').toLowerCase() === 'normal';
+
+      container.innerHTML = `
+      <div class="fade-up space-y-6">
+        <!-- 基础信息横条 -->
+        <div class="flex items-center gap-4 glass-card px-8 py-5">
+          <div class="w-14 h-14 rounded-full bg-gradient-to-br from-pink-200 to-purple-200
+                      flex items-center justify-center text-2xl font-black text-white shadow-lg">
+            ${d.active_level}★
+          </div>
+          <div>
+            <p class="text-2xl font-black text-slate-800">司机 #${d.devid}</p>
+            <p class="text-sm text-slate-400 mt-0.5">
+              统计天数：${d.day_count}天 &nbsp;·&nbsp;
+              主要出行时段：<span class="font-bold text-pink-400">${PERIOD_MAP[d.max_period] || d.max_period}</span>
+            </p>
+          </div>
+          <div class="ml-auto flex items-center gap-3">
+            <span class="star-badge ${levelClass} text-base px-4 py-1.5">活跃等级 ${d.active_level}</span>
+            <span class="star-badge ${scoreLevelClass} text-base px-4 py-1.5">司机评级 ${scoreLevel} 级</span>
+          </div>
+        </div>
+
+        <!-- 行程数据指标卡 -->
+        <div class="grid grid-cols-4 gap-4">
+          <div class="metric-card">
+            <span class="metric-label">完成订单数</span>
+            <span class="metric-value">${d.trip_count}</span>
+            <span class="metric-unit">次</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">日均订单</span>
+            <span class="metric-value">${Number(d.daily_trip_avg).toFixed(1)}</span>
+            <span class="metric-unit">次/天</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">总里程</span>
+            <span class="metric-value">${Number(d.precise_total_dist_km).toFixed(0)}</span>
+            <span class="metric-unit">km</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">平均速度</span>
+            <span class="metric-value">${Number(d.precise_avg_speed_kmh).toFixed(1)}</span>
+            <span class="metric-unit">km/h</span>
+          </div>
+        </div>
+
+        <!-- 安全 + 综合评分指标卡 -->
+        <div class="grid grid-cols-4 gap-4">
+          <div class="metric-card" style="border-color:${Number(d.speeding_rate)===0?'#C8E6C9':'#FFCCBC'}">
+            <span class="metric-label">超速率</span>
+            <span class="metric-value" style="color:${Number(d.speeding_rate)===0?'#2E7D32':'#E65100'}">${speedPct}</span>
+            <span class="metric-unit" style="color:${ruleOk?'#2E7D32':'#B71C1C'}">${ruleOk?'规律正常':'规律异常'}</span>
+          </div>
+          <div class="metric-card" style="border-color:${Number(d.detour_rate)>0.3?'#FFCCBC':'#BBDEFB'}">
+            <span class="metric-label">绕路率</span>
+            <span class="metric-value" style="color:${Number(d.detour_rate)>0.3?'#B71C1C':'#1565C0'}">${detourPct}</span>
+            <span class="metric-unit">${Number(d.detour_rate)>0.3?'偏高':'正常'}</span>
+          </div>
+          <div class="metric-card" style="border-color:#E8EAF6">
+            <span class="metric-label">整体打分</span>
+            <span class="metric-value" style="color:#5C6BC0">${Number(d.base_score).toFixed(2)}</span>
+            <span class="metric-unit">综合得分</span>
+          </div>
+          <div class="metric-card" style="border-color:#F3E5F5">
+            <span class="metric-label">子项评分合计</span>
+            <span class="metric-value" style="color:#7B1FA2">${d.total_score}</span>
+            <span class="metric-unit">满分 20 分</span>
+          </div>
+        </div>
+
+        <!-- 图表区：时段分布 + 评分明细 -->
+        <div class="grid grid-cols-2 gap-6">
+          <div class="chart-box">
+            <h3><i class="fa-solid fa-clock text-blue-300 mr-1"></i>行程时段分布</h3>
+            <div class="period-bar-wrap mt-4" id="period-bars-${d.devid}"></div>
+          </div>
+          <div class="chart-box">
+            <h3><i class="fa-solid fa-star text-yellow-300 mr-1"></i>子项评分明细（各满分5分）</h3>
+            <div class="mt-4 space-y-2" id="score-bars-${d.devid}"></div>
+          </div>
+        </div>
+
+        <!-- 饼图：时段占比 -->
+        <div class="chart-box">
+          <h3><i class="fa-solid fa-chart-pie text-purple-300 mr-1"></i>时段行程占比</h3>
+          <div style="height:240px; display:flex; align-items:center; justify-content:center;">
+            <canvas id="pieChart-${d.devid}" style="max-height:220px;"></canvas>
+          </div>
+        </div>
+      </div>`;
+
+      // 渲染时段进度条
+      const periods = [
+        { name: '早晨', val: d.morning_trip_cnt,   color: '#FFDAB9' },
+        { name: '下午', val: d.afternoon_trip_cnt,  color: '#B2E2F2' },
+        { name: '傍晚', val: d.evening_trip_cnt,    color: '#FFB7B2' },
+        { name: '夜间', val: d.night_trip_cnt,      color: '#CE93D8' },
+      ];
+      const maxVal = Math.max(...periods.map(p => p.val));
+      const periodWrap = document.getElementById(`period-bars-${d.devid}`);
+      periodWrap.innerHTML = periods.map(p => `
+        <div class="period-row">
+          <span class="period-name">${p.name}</span>
+          <div class="period-track">
+            <div class="period-fill" style="width:${(p.val/maxVal*100).toFixed(1)}%; background:${p.color}"></div>
+          </div>
+          <span class="period-cnt">${p.val}</span>
+        </div>`).join('');
+
+      // 渲染评分进度条
+      const scores = [
+        { name: '行程次数评分', val: d.trip_count_score },
+        { name: '日均行程评分', val: d.daily_trip_avg_score },
+        { name: '总里程评分',   val: d.precise_total_dist_km_score },
+        { name: '日均里程评分', val: d.daily_dist_avg_score },
+      ];
+      const scoreWrap = document.getElementById(`score-bars-${d.devid}`);
+      scoreWrap.innerHTML = scores.map(s => `
+        <div class="score-row">
+          <span class="score-name">${s.name}</span>
+          <div class="score-track">
+            <div class="score-fill" style="width:${(s.val / 5 * 100)}%"></div>
+          </div>
+          <span class="score-val">${s.val}</span>
+        </div>`).join('');
+
+      // 渲染甜甜圈饼图
+      const pieCtx = document.getElementById(`pieChart-${d.devid}`).getContext('2d');
+      if (pieChart) pieChart.destroy();
+      pieChart = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['早晨', '下午', '傍晚', '夜间'],
+          datasets: [{
+            data: [d.morning_trip_cnt, d.afternoon_trip_cnt, d.evening_trip_cnt, d.night_trip_cnt],
+            backgroundColor: ['#FFDAB9', '#B2E2F2', '#FFB7B2', '#CE93D8'],
+            borderWidth: 3,
+            borderColor: '#FFFFFF',
+            hoverOffset: 10
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: {
+            legend: { position: 'right', labels: { color: '#718096', font: { size: 13 }, padding: 16 } }
+          }
+        }
+      });
+    }
+
+    // ──────────────────────────────────────────────────────
+    // 道路情况
+    // ──────────────────────────────────────────────────────
+    async function fetchData() {
+      const roadId = document.getElementById('roadIdInput').value;
+      if (!roadId) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/traffic/${roadId}`);
+        const data = await response.json();
+        updateChart(data);
+      } catch (err) {
+        console.error(err);
+        alert('无法连接到后端服务器，请检查 FastAPI 是否已启动 (uvicorn main:app)');
+      }
+    }
+
+    function updateChart(data) {
+      const ctx = document.getElementById('trafficChart').getContext('2d');
+      if (myChart) myChart.destroy();
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+      gradient.addColorStop(0, '#B2E2F2');
+      gradient.addColorStop(1, '#E1BEE7');
+
+      myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.interval + '时'),
+          datasets: [{
+            label: '时段交通量统计',
+            data: data.map(d => d.count),
+            backgroundColor: gradient,
+            hoverBackgroundColor: '#FFB7B2',
+            borderRadius: 20,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { display: false }, ticks: { color: '#ADB5BD' } },
+            x: { grid: { display: false }, ticks: { color: '#747D8C', font: { weight: 'bold' } } }
+          }
+        }
+      });
+    }
+
+    // ──────────────────────────────────────────────────────
+    // 工具函数
+    // ──────────────────────────────────────────────────────
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[char]));
+    }
+
+    function formatNumber(value) {
+      return Number(value || 0).toLocaleString('zh-CN');
+    }
+
+    function showSpeedingStatus(message, isError = true) {
+      const status = document.getElementById('speedingStatus');
+      status.textContent = message;
+      status.classList.remove('hidden', 'bg-red-50', 'text-red-400', 'bg-green-50', 'text-green-500');
+      status.classList.add(isError ? 'bg-red-50' : 'bg-green-50', isError ? 'text-red-400' : 'text-green-500');
+    }
+
+    function hideSpeedingStatus() {
+      document.getElementById('speedingStatus').classList.add('hidden');
+    }
+
+    // ──────────────────────────────────────────────────────
+    // 超速检测
+    // ──────────────────────────────────────────────────────
+    async function loadSpeedingDashboard() {
+      await loadSpeedingSummary();
+      if (currentSpeedingScope === 'order') {
+        await loadSpeedingBreakdowns();
+      } else if (currentSpeedingScope === 'road') {
+        await loadRoadSpeeding();
+      }
+    }
+
+    function switchSpeedingScope(scope) {
+      currentSpeedingScope = scope;
+      document.querySelectorAll('.scope-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.speeding-panel').forEach(panel => panel.classList.add('hidden'));
+
+      const buttonMap = { order: 'scopeOrderBtn', driver: 'scopeDriverBtn', road: 'scopeRoadBtn' };
+      const panelMap  = { order: 'speedingPanelOrder', driver: 'speedingPanelDriver', road: 'speedingPanelRoad' };
+
+      document.getElementById(buttonMap[scope]).classList.add('active');
+      document.getElementById(panelMap[scope]).classList.remove('hidden');
+      loadSpeedingDashboard();
+    }
+
+    async function loadSpeedingSummary() {
+      try {
+        hideSpeedingStatus();
+        const sortBy = document.getElementById('leaderboardSort')?.value || 'speed';
+        const response = await fetch(`${API_BASE_URL}/api/speeding/summary?sort_by=${encodeURIComponent(sortBy)}`);
+        if (!response.ok) throw new Error('summary request failed');
+
+        const data = await response.json();
+        document.getElementById('totalTrips').textContent = formatNumber(data.total_trips);
+        document.getElementById('speedingTrips').textContent = formatNumber(data.speeding_trips);
+        document.getElementById('speedingRate').textContent = `${Number(data.speeding_rate_percent || 0).toFixed(2)}%`;
+        document.getElementById('summaryFourthLabel').textContent = currentSpeedingScope === 'road' ? '高风险道路' : '高风险司机';
+        document.getElementById('summaryFourthValue').textContent = formatNumber(data.high_risk_drivers);
+
+        const leaderboardBody = document.getElementById('leaderboardBody');
+        if (!leaderboardBody) return;
+        if (!data.leaderboard || data.leaderboard.length === 0) {
+          leaderboardBody.innerHTML = '<tr><td colspan="3" class="py-8 text-center text-slate-400 font-bold">暂无高风险司机</td></tr>';
+          return;
+        }
+
+        leaderboardBody.innerHTML = data.leaderboard.map(driver => `
+          <tr class="hover:bg-pink-50/60 transition-colors">
+            <td class="py-4 font-black text-slate-700">${escapeHtml(driver.devid)}</td>
+            <td class="py-4 font-bold">${Number(driver.max_speed_kmh || 0).toFixed(3)}</td>
+            <td class="py-4">
+              <span class="px-3 py-1 rounded-full bg-purple-50 text-purple-400 font-bold text-sm">${escapeHtml(driver.speeding_rate)}</span>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+        showSpeedingStatus('无法加载超速概览，请确认后端已启动并已导入超速 CSV 数据。');
+      }
+    }
+
+    async function fetchOrderSpeeding() {
+      const orderId = document.getElementById('orderIdInput').value.trim();
+      if (!orderId) { showSpeedingStatus('请输入订单号。'); return; }
+
+      try {
+        hideSpeedingStatus();
+        const response = await fetch(`${API_BASE_URL}/api/speeding/order/${encodeURIComponent(orderId)}`);
+        if (response.status === 404) {
+          document.getElementById('orderResultWrap').classList.remove('hidden');
+          document.getElementById('orderTableBody').innerHTML = `
+            <tr><td colspan="6" class="py-8 text-center text-red-400 font-bold">未找到订单 ${escapeHtml(orderId)} 的超速数据</td></tr>`;
+          return;
+        }
+        if (!response.ok) throw new Error('order request failed');
+        const order = await response.json();
+        renderOrderTable([order]);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('orderResultWrap').classList.remove('hidden');
+        document.getElementById('orderTableBody').innerHTML = '<tr><td colspan="6" class="py-8 text-center text-red-400 font-bold">无法加载订单超速数据</td></tr>';
+      }
+    }
+
+    function renderOrderTable(orders) {
+      document.getElementById('orderResultWrap').classList.remove('hidden');
+      const orderTableBody = document.getElementById('orderTableBody');
+      if (!orders.length) {
+        orderTableBody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-400 font-bold">暂无订单数据</td></tr>';
+        return;
+      }
+      orderTableBody.innerHTML = orders.map(order => {
+        const speeding = Number(order.is_speeding) === 1;
+        return `
+          <tr class="${speeding ? 'bg-red-50/60' : 'hover:bg-green-50/40'} transition-colors">
+            <td class="py-4 font-bold text-slate-700">${escapeHtml(order.trip_id)}</td>
+            <td class="py-4 font-black text-slate-700">${escapeHtml(order.devid)}</td>
+            <td class="py-4">${escapeHtml(order.date)}</td>
+            <td class="py-4">${escapeHtml(order.start_time)}</td>
+            <td class="py-4 font-black ${speeding ? 'text-red-400' : 'text-slate-700'}">${Number(order.max_speed_kmh || 0).toFixed(3)} km/h</td>
+            <td class="py-4">
+              <span class="px-3 py-1 rounded-full ${speeding ? 'bg-red-100 text-red-400' : 'bg-green-100 text-green-500'} font-bold text-sm">
+                ${speeding ? '超速' : '正常'}
+              </span>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function loadRoadSpeeding() {
+      try {
+        hideSpeedingStatus();
+        const sortBy = document.getElementById('roadSort')?.value || 'risk';
+        const response = await fetch(`${API_BASE_URL}/api/speeding/roads?high_risk_only=true&sort_by=${encodeURIComponent(sortBy)}&limit=80`);
+        if (!response.ok) throw new Error('roads request failed');
+
+        const data = await response.json();
+        document.getElementById('summaryFourthLabel').textContent = '高风险道路';
+        document.getElementById('summaryFourthValue').textContent = formatNumber(data.high_risk_roads);
+        renderRoadTable(data.roads || []);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('roadTableBody').innerHTML = '<tr><td colspan="5" class="py-8 text-center text-red-400 font-bold">无法加载高风险道路</td></tr>';
+        showSpeedingStatus('无法加载道路超速数据，请确认 road_speed_table 已导入。');
+      }
+    }
+
+    function renderRoadTable(roads) {
+      const roadTableBody = document.getElementById('roadTableBody');
+      if (!roads.length) {
+        roadTableBody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400 font-bold">暂无高风险道路</td></tr>';
+        return;
+      }
+      roadTableBody.innerHTML = roads.map(road => {
+        const highRisk = Number(road.speeding_orders || 0) > 0;
+        const rate = Number(road.speeding_rate_percent || 0);
+        return `
+          <tr class="${highRisk ? 'bg-red-50/50' : 'hover:bg-green-50/40'} transition-colors">
+            <td class="py-4 font-black text-slate-700">${escapeHtml(road.road_id)}</td>
+            <td class="py-4">${formatNumber(road.total_orders)}</td>
+            <td class="py-4 font-bold">${Number(road.avg_speed_kmh || 0).toFixed(3)} km/h</td>
+            <td class="py-4">
+              <span class="px-3 py-1 rounded-full ${highRisk ? 'bg-red-100 text-red-400' : 'bg-green-100 text-green-500'} font-bold text-sm">${rate.toFixed(2)}%</span>
+            </td>
+            <td class="py-4 font-bold ${highRisk ? 'text-red-400' : 'text-green-500'}">${highRisk ? '高风险' : '正常'}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function fetchRoadSpeeding() {
+      const roadId = document.getElementById('roadSpeedingInput').value.trim();
+      if (!roadId) { showSpeedingStatus('请输入道路 ID。'); return; }
+
+      try {
+        hideSpeedingStatus();
+        const response = await fetch(`${API_BASE_URL}/api/speeding/road/${encodeURIComponent(roadId)}`);
+        if (response.status === 404) {
+          document.getElementById('roadResult').innerHTML = `
+            <div class="bg-red-50 rounded-[28px] p-6 border-4 border-white text-red-400 font-bold">
+              未找到道路 ${escapeHtml(roadId)} 的超速数据。
+            </div>`;
+          return;
+        }
+        if (!response.ok) throw new Error('road request failed');
+        const road = await response.json();
+        renderRoadResult(road);
+      } catch (err) {
+        console.error(err);
+        showSpeedingStatus('无法查询道路超速数据，请检查 FastAPI 服务连接。');
+      }
+    }
+
+    function renderRoadResult(road) {
+      const highRisk = Number(road.speeding_orders || 0) > 0;
+      document.getElementById('roadResult').innerHTML = `
+        <div class="${highRisk ? 'bg-red-50 text-red-400' : 'bg-green-50 text-green-500'} rounded-[28px] p-6 border-4 border-white">
+          <p class="text-xs font-bold uppercase tracking-widest">${highRisk ? '高风险道路' : '普通道路'}</p>
+          <p class="text-3xl font-black mt-1">${escapeHtml(road.road_id)}</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white rounded-3xl p-5">
+            <p class="text-xs text-slate-400 font-bold">经过订单</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${formatNumber(road.total_orders)}</p>
+          </div>
+          <div class="bg-white rounded-3xl p-5">
+            <p class="text-xs text-slate-400 font-bold">超速订单</p>
+            <p class="text-2xl font-black text-pink-300 mt-1">${formatNumber(road.speeding_orders)}</p>
+          </div>
+          <div class="bg-white rounded-3xl p-5">
+            <p class="text-xs text-slate-400 font-bold">平均速度</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${Number(road.avg_speed_kmh || 0).toFixed(3)} km/h</p>
+          </div>
+          <div class="bg-white rounded-3xl p-5">
+            <p class="text-xs text-slate-400 font-bold">超速率</p>
+            <p class="text-2xl font-black text-red-400 mt-1">${escapeHtml(road.speeding_rate || '0.00%')}</p>
+          </div>
+        </div>`;
+    }
+
+    async function loadSpeedingBreakdowns() {
+      await loadTimeSpeeding();
+    }
+
+    async function loadTimeSpeeding() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/speeding/by-time`);
+        if (!response.ok) throw new Error('time breakdown request failed');
+        renderSpeedingRateTable('timeSpeedingBody', await response.json(), 'time_slot');
+      } catch (err) {
+        console.error(err);
+        document.getElementById('timeSpeedingBody').innerHTML = '<tr><td colspan="4" class="py-8 text-center text-red-400 font-bold">无法加载时间超速率</td></tr>';
+      }
+    }
+
+    function renderSpeedingRateTable(bodyId, rows, labelKey) {
+      const tableBody = document.getElementById(bodyId);
+      if (!rows || rows.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-slate-400 font-bold">暂无统计数据</td></tr>';
+        return;
+      }
+      tableBody.innerHTML = rows.map(row => {
+        const rate = Number(row.speeding_rate_percent || 0);
+        const rateClass = rate >= 10 ? 'text-red-400 bg-red-50' : rate >= 5 ? 'text-orange-400 bg-orange-50' : 'text-green-500 bg-green-50';
+        return `
+          <tr class="hover:bg-purple-50/40 transition-colors">
+            <td class="py-4 font-black text-slate-700">${escapeHtml(row[labelKey])}</td>
+            <td class="py-4">${formatNumber(row.total_trips)}</td>
+            <td class="py-4 text-pink-400 font-bold">${formatNumber(row.speeding_trips)}</td>
+            <td class="py-4">
+              <span class="px-3 py-1 rounded-full ${rateClass} font-bold text-sm">${rate.toFixed(2)}%</span>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function fetchDriverSpeeding() {
+      const driverId = document.getElementById('driverIdInput').value.trim();
+      if (!driverId) { showSpeedingStatus('请输入司机 ID。'); return; }
+
+      try {
+        hideSpeedingStatus();
+        const response = await fetch(`${API_BASE_URL}/api/speeding/driver/${encodeURIComponent(driverId)}`);
+        if (response.status === 404) { renderDriverNotFound(driverId); return; }
+        if (!response.ok) throw new Error('driver request failed');
+
+        const data = await response.json();
+        renderDriverResult(data.driver, data.trips || []);
+      } catch (err) {
+        console.error(err);
+        showSpeedingStatus('无法查询司机超速数据，请检查 FastAPI 服务连接。');
+      }
+    }
+
+    function renderDriverNotFound(driverId) {
+      document.getElementById('driverResult').innerHTML = `
+        <div class="bg-red-50 rounded-[28px] p-6 border-4 border-white text-red-400 font-bold">
+          未找到司机 ${escapeHtml(driverId)} 的超速数据。
+        </div>`;
+      document.getElementById('tripTableTitle').textContent = '无匹配司机';
+      document.getElementById('tripTableBody').innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400 font-bold">暂无行程数据</td></tr>';
+    }
+
+    function renderDriverResult(driver, trips) {
+      const isHighRisk = driver && driver.speeding_rule === 'high_risk';
+      document.getElementById('driverResult').innerHTML = `
+        <div class="${isHighRisk ? 'bg-red-50 text-red-400' : 'bg-green-50 text-green-500'} rounded-[28px] p-6 border-4 border-white">
+          <p class="text-xs font-bold uppercase tracking-widest">${isHighRisk ? '高风险司机' : '普通司机'}</p>
+          <p class="text-3xl font-black mt-1">${escapeHtml(driver?.devid || '--')}</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white rounded-3xl p-5">
+            <p class="text-xs text-slate-400 font-bold">平均速度</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${Number(driver?.avg_speed_kmh || 0).toFixed(3)} km/h</p>
+          </div>
+          <div class="bg-white rounded-3xl p-5">
+            <p class="text-xs text-slate-400 font-bold">速度等级</p>
+            <p class="text-2xl font-black text-purple-300 mt-1">${escapeHtml(driver?.speed_level || '--')}</p>
+          </div>
+          <div class="bg-white rounded-3xl p-5">
+            <p class="text-xs text-slate-400 font-bold">超速率</p>
+            <p class="text-2xl font-black text-pink-300 mt-1">${escapeHtml(driver?.speeding_rate || '0%')}</p>
+          </div>
+          <div class="bg-white rounded-3xl p-5">
+            <p class="text-xs text-slate-400 font-bold">行程数</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${formatNumber(trips.length)}</p>
+          </div>
+        </div>`;
+
+      document.getElementById('tripTableTitle').textContent = `司机 ${driver?.devid || ''} 的行程`;
+      renderTripTable(trips);
+    }
+
+    function renderTripTable(trips) {
+      const tripTableBody = document.getElementById('tripTableBody');
+      if (!trips.length) {
+        tripTableBody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400 font-bold">暂无行程数据</td></tr>';
+        return;
+      }
+      tripTableBody.innerHTML = trips.map(trip => {
+        const speeding = Number(trip.is_speeding) === 1;
+        return `
+          <tr class="${speeding ? 'bg-red-50/60' : 'hover:bg-green-50/40'} transition-colors">
+            <td class="py-4 font-bold text-slate-700">${escapeHtml(trip.trip_id)}</td>
+            <td class="py-4">${escapeHtml(trip.date)}</td>
+            <td class="py-4">${escapeHtml(trip.start_time)}</td>
+            <td class="py-4 font-black ${speeding ? 'text-red-400' : 'text-slate-700'}">${Number(trip.max_speed_kmh || 0).toFixed(3)} km/h</td>
+            <td class="py-4">
+              <span class="px-3 py-1 rounded-full ${speeding ? 'bg-red-100 text-red-400' : 'bg-green-100 text-green-500'} font-bold text-sm">
+                ${speeding ? '超速' : '正常'}
+              </span>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    // ──────────────────────────────────────────────────────
+    // 高峰指南
+    // ──────────────────────────────────────────────────────
+    function buildSlots() {
+      const slots = [];
+      for (let hour = 0; hour < 24; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const sh = String(hour).padStart(2, '0');
+          const sm = String(minute).padStart(2, '0');
+          let eh = hour, em = minute + 30;
+          if (em >= 60) { em = 0; eh = hour + 1; }
+          slots.push(`${sh}:${sm}-${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`);
+        }
+      }
+      return slots;
+    }
+
+    async function initReportControls() {
+      initSlotSelect();
+      await initDateSelect();
+      await refreshReport();
+    }
+
+    function initSlotSelect() {
+      const select = document.getElementById('slotSelect');
+      if (!select || select.options.length > 0) return;
+      const slots = buildSlots();
+      select.innerHTML = slots.map(slot => `<option value="${slot}">${slot}</option>`).join('');
+      select.value = DEFAULT_SLOT;
+    }
+
+    async function initDateSelect() {
+      const select = document.getElementById('dateSelect');
+      if (!select || select.options.length > 0) return;
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/report/dates`);
+        if (!response.ok) throw new Error('Failed to fetch dates');
+        const dates = await response.json();
+        select.innerHTML = dates.map(date => `<option value="${date}">${date}</option>`).join('');
+      } catch (err) {
+        console.error(err);
+        alert('日期列表加载失败，请检查后端服务。');
+      }
+    }
+
+    function getSelectedDate() {
+      return document.getElementById('dateSelect').value;
+    }
+
+    function renderTopList(containerId, rows) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      if (!rows || rows.length === 0) {
+        container.innerHTML = '<p class="text-slate-400">当前条件下没有数据。</p>';
+        return;
+      }
+      container.innerHTML = rows.map(row => `
+        <div class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3">
+          <div class="font-semibold text-slate-700">#${row.rank} 道路 ${row.road_id}</div>
+          <div class="text-slate-500">${Number(row.flow_count).toFixed(0)}</div>
+        </div>`).join('');
+    }
+
+    function renderSummary(summary) {
+      const container = document.getElementById('summaryCards');
+      if (!container) return;
+      const cards = [
+        { label: '当日全路网总流量', value: Number(summary.total_flow).toFixed(0), tone: 'text-rose-400' },
+        { label: '覆盖道路数', value: summary.road_count, tone: 'text-sky-400' },
+        { label: '单条记录平均流量', value: Number(summary.avg_flow).toFixed(2), tone: 'text-emerald-400' },
+        { label: '最拥堵时段', value: summary.peak_slot ? `${summary.peak_slot} / ${Number(summary.peak_slot_flow).toFixed(0)}` : '无数据', tone: 'text-amber-400' }
+      ];
+      container.innerHTML = cards.map(card => `
+        <div class="summary-card p-5">
+          <div class="text-sm text-slate-400">${card.label}</div>
+          <div class="mt-3 text-2xl font-black ${card.tone}">${card.value}</div>
+        </div>`).join('');
+    }
+
+    async function refreshReport() {
+      await Promise.all([fetchReportSummary(), fetchPeakBySlot(), fetchDailyTop()]);
+    }
+
+    async function fetchReportSummary() {
+      const selectedDate = getSelectedDate();
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/report/summary?date=${selectedDate}`);
+        if (!response.ok) throw new Error('Failed to fetch report summary');
+        renderSummary(await response.json());
+      } catch (err) {
+        console.error(err);
+        alert('高峰指南摘要加载失败，请检查后端服务。');
+      }
+    }
+
+    async function fetchPeakBySlot() {
+      const selectedDate = getSelectedDate();
+      const slot = document.getElementById('slotSelect').value || DEFAULT_SLOT;
+      const level = document.getElementById('slotLevelSelect').value;
+      const params = new URLSearchParams({ slot_30min: slot, limit: '10', date: selectedDate });
+      if (level) params.set('flow_level_30min', level);
+
+      document.getElementById('slotLabel').textContent = level
+        ? `${selectedDate} / ${slot} / 等级 ${level}`
+        : `${selectedDate} / ${slot} / 全部等级`;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/top-roads/slot?${params.toString()}`);
+        if (!response.ok) throw new Error('Failed to fetch slot top list');
+        renderTopList('slotTopList', await response.json());
+      } catch (err) {
+        console.error(err);
+        alert('时段流量榜加载失败，请检查后端服务。');
+      }
+    }
+
+    async function fetchDailyTop() {
+      const selectedDate = getSelectedDate();
+      const limit = document.getElementById('dailyLimitSelect').value || '10';
+      const level = document.getElementById('dailyLevelSelect').value;
+      const params = new URLSearchParams({ limit, date: selectedDate });
+      if (level) params.set('flow_level_daily', level);
+
+      document.getElementById('dailyLabel').textContent = level
+        ? `${selectedDate} / 等级 ${level} / 前${limit}`
+        : `${selectedDate} / 全部等级 / 前${limit}`;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/top-roads/daily?${params.toString()}`);
+        if (!response.ok) throw new Error('Failed to fetch daily top list');
+        renderTopList('dailyTopList', await response.json());
+      } catch (err) {
+        console.error(err);
+        alert('当日总流量榜加载失败，请检查后端服务。');
+      }
+    }
+
+    // ──────────────────────────────────────────────────────
+    // 键盘监听
+    // ──────────────────────────────────────────────────────
+    document.getElementById('driverIdInput').addEventListener('keydown', e => { if (e.key === 'Enter') fetchDriverSpeeding(); });
+    document.getElementById('orderIdInput').addEventListener('keydown', e => { if (e.key === 'Enter') fetchOrderSpeeding(); });
+    document.getElementById('roadSpeedingInput').addEventListener('keydown', e => { if (e.key === 'Enter') fetchRoadSpeeding(); });
+
+    // ──────────────────────────────────────────────────────
+    // 页面初始化：自动加载用户画像表格
+    // ──────────────────────────────────────────────────────
+    loadProfileTable();
+  </script>
+</body>
+
+</html>
