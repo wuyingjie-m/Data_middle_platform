@@ -8,6 +8,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script>
+    window._AMapSecurityConfig = {
+      securityJsCode: 'e1fc73586440409ccd38cbb6c34539cd'
+    };
+  </script>
+  <script src="https://webapi.amap.com/maps?v=2.0&key=2a68fddc6308cd97fdfe7ed9158ce440"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
 
@@ -147,6 +153,14 @@
     .score-track { flex: 1; height: 10px; background: #F0F2F5; border-radius: 999px; overflow: hidden; }
     .score-fill  { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #B2E2F2, #CE93D8); transition: width 0.8s ease; }
     .score-val   { width: 20px; text-align: right; font-weight: 700; color: #2D3748; }
+
+    .road-map-box {
+      height: 520px;
+      border-radius: 28px;
+      overflow: hidden;
+      border: 2px solid #F0F2F5;
+      background: #F8FAFC;
+    }
   </style>
 </head>
 
@@ -497,6 +511,20 @@
               </div>
             </div>
           </div>
+
+          <div class="mt-6 glass-card p-8 shadow-xl shadow-slate-100/50">
+            <div class="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 class="text-2xl font-black text-slate-800">道路风险地图</h3>
+                <p id="roadMapStatus" class="text-sm text-slate-400 mt-1">等待加载高德地图</p>
+              </div>
+              <button onclick="loadRoadMap()"
+                class="btn-search h-11 w-11 rounded-2xl shadow-md shadow-blue-100" title="刷新地图">
+                <i class="fa-solid fa-map-location-dot"></i>
+              </button>
+            </div>
+            <div id="roadRiskMap" class="road-map-box"></div>
+          </div>
         </div>
       </div>
 
@@ -588,8 +616,14 @@
     // ──────────────────────────────────────────────────────
     let myChart, pieChart;
     const DEFAULT_SLOT = '10:00-10:30';
-    const API_BASE_URL = 'http://49.52.27.112:8000';
+    const API_BASE_URL = window.location.protocol === 'http:' || window.location.protocol === 'https:'
+      ? window.location.origin
+      : 'http://127.0.0.1:8001';
     let currentSpeedingScope = 'order';
+    let roadMap = null;
+    let roadInfoWindow = null;
+    let roadMapLines = [];
+    let roadHighlightLine = null;
 
     // ──────────────────────────────────────────────────────
     // 用户画像常量
@@ -1045,13 +1079,14 @@
       try {
         hideSpeedingStatus();
         const sortBy = document.getElementById('roadSort')?.value || 'risk';
-        const response = await fetch(`${API_BASE_URL}/api/speeding/roads?high_risk_only=true&sort_by=${encodeURIComponent(sortBy)}&limit=80`);
+        const response = await fetch(`${API_BASE_URL}/api/speeding/roads?high_risk_only=true&sort_by=${encodeURIComponent(sortBy)}&limit=5`);
         if (!response.ok) throw new Error('roads request failed');
 
         const data = await response.json();
         document.getElementById('summaryFourthLabel').textContent = '高风险道路';
         document.getElementById('summaryFourthValue').textContent = formatNumber(data.high_risk_roads);
         renderRoadTable(data.roads || []);
+        await loadRoadMap();
       } catch (err) {
         console.error(err);
         document.getElementById('roadTableBody').innerHTML = '<tr><td colspan="5" class="py-8 text-center text-red-400 font-bold">无法加载高风险道路</td></tr>';
@@ -1069,7 +1104,7 @@
         const highRisk = Number(road.speeding_orders || 0) > 0;
         const rate = Number(road.speeding_rate_percent || 0);
         return `
-          <tr class="${highRisk ? 'bg-red-50/50' : 'hover:bg-green-50/40'} transition-colors">
+          <tr onclick="fetchRoadSpeedingById('${escapeHtml(road.road_id)}')" class="${highRisk ? 'bg-red-50/50' : 'hover:bg-green-50/40'} transition-colors cursor-pointer">
             <td class="py-4 font-black text-slate-700">${escapeHtml(road.road_id)}</td>
             <td class="py-4">${formatNumber(road.total_orders)}</td>
             <td class="py-4 font-bold">${Number(road.avg_speed_kmh || 0).toFixed(3)} km/h</td>
@@ -1084,9 +1119,13 @@
     async function fetchRoadSpeeding() {
       const roadId = document.getElementById('roadSpeedingInput').value.trim();
       if (!roadId) { showSpeedingStatus('请输入道路 ID。'); return; }
+      await fetchRoadSpeedingById(roadId);
+    }
 
+    async function fetchRoadSpeedingById(roadId) {
       try {
         hideSpeedingStatus();
+        document.getElementById('roadSpeedingInput').value = roadId;
         const response = await fetch(`${API_BASE_URL}/api/speeding/road/${encodeURIComponent(roadId)}`);
         if (response.status === 404) {
           document.getElementById('roadResult').innerHTML = `
@@ -1098,6 +1137,7 @@
         if (!response.ok) throw new Error('road request failed');
         const road = await response.json();
         renderRoadResult(road);
+        highlightRoadOnMap(road);
       } catch (err) {
         console.error(err);
         showSpeedingStatus('无法查询道路超速数据，请检查 FastAPI 服务连接。');
@@ -1128,7 +1168,128 @@
             <p class="text-xs text-slate-400 font-bold">超速率</p>
             <p class="text-2xl font-black text-red-400 mt-1">${escapeHtml(road.speeding_rate || '0.00%')}</p>
           </div>
+          <div class="bg-white rounded-3xl p-5 col-span-2">
+            <p class="text-xs text-slate-400 font-bold">路段距离</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${Number(road.distance_km || 0).toFixed(3)} km</p>
+          </div>
         </div>`;
+    }
+
+    function setRoadMapStatus(message, isError = false) {
+      const status = document.getElementById('roadMapStatus');
+      if (!status) return;
+      status.textContent = message;
+      status.className = `text-sm mt-1 ${isError ? 'text-red-400 font-bold' : 'text-slate-400'}`;
+    }
+
+    function initRoadMap() {
+      if (roadMap) return true;
+      if (!window.AMap) {
+        setRoadMapStatus('高德地图脚本加载失败，请检查 Key、securityJsCode 或网络。', true);
+        return false;
+      }
+
+      roadMap = new AMap.Map('roadRiskMap', {
+        zoom: 12,
+        center: [126.63, 45.75],
+        viewMode: '2D'
+      });
+      roadInfoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -8) });
+      return true;
+    }
+
+    function getRoadLineColor(road) {
+      const rate = Number(road.speeding_rate_percent || 0);
+      if (rate >= 20) return '#ef4444';
+      if (rate >= 10) return '#f59e0b';
+      return '#8b5cf6';
+    }
+
+    function clearRoadMapLines() {
+      if (!roadMap || roadMapLines.length === 0) return;
+      roadMap.remove(roadMapLines);
+      roadMapLines = [];
+      roadHighlightLine = null;
+    }
+
+    async function loadRoadMap(roadId = '') {
+      if (!initRoadMap()) return;
+      try {
+        setRoadMapStatus('正在加载真实路段线...');
+        const params = new URLSearchParams({ limit: roadId ? '1' : '200' });
+        if (roadId) params.set('road_id', roadId);
+        const response = await fetch(`${API_BASE_URL}/api/speeding/road-map?${params.toString()}`);
+        if (!response.ok) throw new Error('road map request failed');
+
+        const roads = await response.json();
+        clearRoadMapLines();
+
+        roads.filter(road => Array.isArray(road.geometry) && road.geometry.length >= 2).forEach(road => {
+          const line = new AMap.Polyline({
+            path: road.geometry,
+            strokeColor: getRoadLineColor(road),
+            strokeWeight: Math.min(10, 4 + Math.log10(Number(road.speeding_orders || 0) + Number(road.match_score || 1))),
+            strokeOpacity: 0.88,
+            lineJoin: 'round',
+            lineCap: 'round',
+            extData: road
+          });
+
+          line.on('click', () => {
+            const data = line.getExtData();
+            showRoadInfoWindow(data, data.geometry[Math.floor(data.geometry.length / 2)]);
+            fetchRoadSpeedingById(data.road_id);
+          });
+
+          roadMapLines.push(line);
+        });
+
+        if (roadMapLines.length > 0) {
+          roadMap.add(roadMapLines);
+          roadMap.setFitView(roadMapLines, false, [60, 60, 60, 60]);
+          setRoadMapStatus(`已加载 ${roadMapLines.length} 条真实路段线`);
+        } else {
+          setRoadMapStatus('当前条件下没有可展示的路段几何。', true);
+        }
+      } catch (err) {
+        console.error(err);
+        setRoadMapStatus('道路地图数据加载失败，请确认 road_geom_table 已导入。', true);
+      }
+    }
+
+    function showRoadInfoWindow(road, position) {
+      if (!roadInfoWindow || !position) return;
+      roadInfoWindow.setContent(`
+        <div class="text-sm leading-6">
+          <div class="font-black text-slate-800">道路 ${escapeHtml(road.road_id)}</div>
+          <div>距离：${Number(road.distance_km || 0).toFixed(3)} km</div>
+          <div>均速：${Number(road.avg_speed_kmh || 0).toFixed(3)} km/h</div>
+          <div>超速率：${Number(road.speeding_rate_percent || 0).toFixed(2)}%</div>
+          <div>超速订单：${formatNumber(road.speeding_orders)}</div>
+        </div>
+      `);
+      roadInfoWindow.open(roadMap, position);
+    }
+
+    async function highlightRoadOnMap(road) {
+      if (!road || !Array.isArray(road.geometry) || road.geometry.length < 2) {
+        await loadRoadMap(String(road?.road_id || ''));
+        return;
+      }
+      if (!initRoadMap()) return;
+      if (roadHighlightLine) roadMap.remove(roadHighlightLine);
+
+      roadHighlightLine = new AMap.Polyline({
+        path: road.geometry,
+        strokeColor: '#0f172a',
+        strokeWeight: 9,
+        strokeOpacity: 0.95,
+        lineJoin: 'round',
+        lineCap: 'round'
+      });
+      roadMap.add(roadHighlightLine);
+      roadMap.setFitView([roadHighlightLine], false, [80, 80, 80, 80]);
+      showRoadInfoWindow(road, road.geometry[Math.floor(road.geometry.length / 2)]);
     }
 
     async function loadSpeedingBreakdowns() {

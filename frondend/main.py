@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
@@ -15,7 +17,10 @@ app.add_middleware(
 )
 
 # 数据库连接配置
-DB_URL = "mysql+pymysql://dqw:dongqiwen2024@127.0.0.1:3306/Data_middle_platform?charset=utf8mb4"
+DB_URL = os.getenv(
+    "DATABASE_URL",
+    "mysql+pymysql://dqw:dongqiwen2024@127.0.0.1:3306/Data_middle_platform?charset=utf8mb4",
+)
 engine = create_engine(DB_URL)
 
 DEFAULT_SLOT = "10:00-10:30"
@@ -255,6 +260,47 @@ def road_speed_row_to_dict(row):
         "speeding_rate": data["speeding_rate"],
         "speeding_rate_percent": speeding_rate_percent,
         "is_high_risk": speeding_orders > 0,
+    }
+
+
+def parse_linestring_geometry(route_geom):
+    if not route_geom:
+        return []
+
+    content = str(route_geom).strip()
+    if not content.startswith("LINESTRING (") or not content.endswith(")"):
+        return []
+
+    geometry = []
+    for pair in content[len("LINESTRING ("):-1].split(","):
+        parts = pair.strip().split()
+        if len(parts) != 2:
+            return []
+        try:
+            geometry.append([float(parts[0]), float(parts[1])])
+        except ValueError:
+            return []
+
+    return geometry
+
+
+def road_map_row_to_dict(row):
+    data = row._mapping
+    speeding_rate_percent = parse_percent(data["speeding_rate"])
+    distance_m = float(data["distance_m"] or 0)
+    coord_count = int(data["coord_count"] or 0)
+    speeding_orders = int(data["speeding_orders"] or 0)
+    return {
+        "road_id": str(data["road_id"]),
+        "distance_m": round(distance_m, 3),
+        "distance_km": round(distance_m / 1000, 3),
+        "geometry": parse_linestring_geometry(data["route_geom"]),
+        "speeding_rate_percent": speeding_rate_percent,
+        "speeding_orders": speeding_orders,
+        "avg_speed_kmh": round(float(data["avg_speed_kmh"] or 0), 3),
+        "total_orders": int(data["total_orders"] or 0),
+        "speeding_rate": data["speeding_rate"] or "0.00%",
+        "match_score": coord_count,
     }
 
 
@@ -575,12 +621,60 @@ async def get_speeding_roads(
     }
 
 
+@app.get("/api/speeding/road-map")
+async def get_speeding_road_map(
+        road_id: str | None = None,
+        limit: int = Query(200, ge=1, le=2000),
+):
+    where_sql = ""
+    params = {"limit": limit}
+    if road_id:
+        where_sql = "WHERE CAST(rs.road_id AS CHAR) = :road_id"
+        params["road_id"] = road_id
+
+    query = text("""
+        SELECT
+            rs.road_id,
+            rs.total_orders,
+            rs.speeding_orders,
+            rs.avg_speed_kmh,
+            rs.speeding_rate,
+            rg.route_geom,
+            rg.distance_m,
+            rg.coord_count
+        FROM road_speed_table rs
+        LEFT JOIN road_geom_table rg
+          ON CAST(rs.road_id AS CHAR) = CAST(rg.road_id AS CHAR)
+        {where_sql}
+        ORDER BY
+            CAST(REPLACE(rs.speeding_rate, '%', '') AS DECIMAL(10, 2)) DESC,
+            CAST(rs.speeding_orders AS UNSIGNED) DESC,
+            CAST(rs.avg_speed_kmh AS DECIMAL(10, 3)) DESC
+        LIMIT :limit
+    """.format(where_sql=where_sql))
+
+    with engine.connect() as conn:
+        rows = conn.execute(query, params).fetchall()
+
+    return [road_map_row_to_dict(row) for row in rows]
+
+
 @app.get("/api/speeding/road/{road_id}")
 async def get_road_speeding(road_id: str):
     query = text("""
-        SELECT road_id, total_orders, speeding_orders, avg_speed_kmh, speeding_rate
-        FROM road_speed_table
-        WHERE CAST(road_id AS CHAR) = :road_id
+        SELECT
+            rs.road_id,
+            rs.total_orders,
+            rs.speeding_orders,
+            rs.avg_speed_kmh,
+            rs.speeding_rate,
+            rg.route_geom,
+            rg.distance_m,
+            rg.coord_count
+        FROM road_speed_table rs
+        LEFT JOIN road_geom_table rg
+          ON CAST(rs.road_id AS CHAR) = CAST(rg.road_id AS CHAR)
+        WHERE CAST(rs.road_id AS CHAR) = :road_id
         LIMIT 1
     """)
 
@@ -590,7 +684,7 @@ async def get_road_speeding(road_id: str):
     if row is None:
         raise HTTPException(status_code=404, detail="Road ID not found")
 
-    return road_speed_row_to_dict(row)
+    return road_map_row_to_dict(row)
 
 
 @app.get("/api/speeding/by-time")
