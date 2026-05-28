@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
@@ -15,7 +17,10 @@ app.add_middleware(
 )
 
 # 数据库连接配置
-DB_URL = "mysql+pymysql://dqw:dongqiwen2024@127.0.0.1:3306/Data_middle_platform?charset=utf8mb4"
+DB_URL = os.getenv(
+    "DATABASE_URL",
+    "mysql+pymysql://dqw:dongqiwen2024@127.0.0.1:3306/Data_middle_platform?charset=utf8mb4",
+)
 engine = create_engine(DB_URL)
 
 DEFAULT_SLOT = "10:00-10:30"
@@ -206,6 +211,72 @@ async def get_report_summary(date: str | None = None):
     }
 
 
+@app.get("/api/report/road-map")
+async def get_report_road_map(
+        date: str | None = None,
+        slot_30min: str = DEFAULT_SLOT,
+        flow_level_30min: int | None = Query(None, ge=1, le=5),
+        min_flow_level_30min: int | None = Query(None, ge=1, le=5),
+        road_id: str | None = None,
+        limit: int = Query(10000, ge=1, le=10000),
+):
+    selected_date = date or get_latest_report_date()
+    where_parts = ["rf.date = :date", "rf.slot_30min = :slot_30min"]
+    params = {
+        "date": selected_date,
+        "slot_30min": slot_30min,
+        "limit": limit,
+    }
+
+    if flow_level_30min is not None:
+        where_parts.append("rf.flow_level_30min = :flow_level_30min")
+        params["flow_level_30min"] = flow_level_30min
+
+    if min_flow_level_30min is not None:
+        where_parts.append("rf.flow_level_30min >= :min_flow_level_30min")
+        params["min_flow_level_30min"] = min_flow_level_30min
+
+    if road_id:
+        where_parts.append("CAST(rf.road_id AS CHAR) = :road_id")
+        params["road_id"] = road_id
+
+    query = text("""
+        SELECT
+            rf.road_id,
+            rf.date,
+            rf.slot_30min,
+            MAX(CAST(rf.traffic_flow_count AS DECIMAL(10, 3))) AS flow_count,
+            MAX(CAST(rf.flow_level_30min AS UNSIGNED)) AS flow_level_30min,
+            MAX(CAST(rf.flow_level_daily AS UNSIGNED)) AS flow_level_daily,
+            MAX(CAST(rf.heat_weight_30min AS DECIMAL(10, 3))) AS heat_weight_30min,
+            MAX(CAST(rf.heat_weight_daily AS DECIMAL(10, 3))) AS heat_weight_daily,
+            rg.route_geom,
+            rg.distance_m,
+            rg.coord_count
+        FROM tdm_tag_road_flow rf
+        LEFT JOIN road_geom_table rg
+          ON CAST(rf.road_id AS CHAR) = CAST(rg.road_id AS CHAR)
+        WHERE {where_sql}
+        GROUP BY
+            rf.road_id,
+            rf.date,
+            rf.slot_30min,
+            rg.route_geom,
+            rg.distance_m,
+            rg.coord_count
+        ORDER BY
+            flow_level_30min DESC,
+            flow_count DESC,
+            rf.road_id ASC
+        LIMIT :limit
+    """.format(where_sql=" AND ".join(where_parts)))
+
+    with engine.connect() as conn:
+        rows = conn.execute(query, params).fetchall()
+
+    return [peak_road_map_row_to_dict(row) for row in rows]
+
+
 def parse_percent(value):
     if value is None:
         return 0.0
@@ -255,6 +326,67 @@ def road_speed_row_to_dict(row):
         "speeding_rate": data["speeding_rate"],
         "speeding_rate_percent": speeding_rate_percent,
         "is_high_risk": speeding_orders > 0,
+    }
+
+
+def parse_linestring_geometry(route_geom):
+    if not route_geom:
+        return []
+
+    content = str(route_geom).strip()
+    if not content.startswith("LINESTRING (") or not content.endswith(")"):
+        return []
+
+    geometry = []
+    for pair in content[len("LINESTRING ("):-1].split(","):
+        parts = pair.strip().split()
+        if len(parts) != 2:
+            return []
+        try:
+            geometry.append([float(parts[0]), float(parts[1])])
+        except ValueError:
+            return []
+
+    return geometry
+
+
+def road_map_row_to_dict(row):
+    data = row._mapping
+    speeding_rate_percent = parse_percent(data["speeding_rate"])
+    distance_m = float(data["distance_m"] or 0)
+    coord_count = int(data["coord_count"] or 0)
+    speeding_orders = int(data["speeding_orders"] or 0)
+    return {
+        "road_id": str(data["road_id"]),
+        "distance_m": round(distance_m, 3),
+        "distance_km": round(distance_m / 1000, 3),
+        "geometry": parse_linestring_geometry(data["route_geom"]),
+        "speeding_rate_percent": speeding_rate_percent,
+        "speeding_orders": speeding_orders,
+        "avg_speed_kmh": round(float(data["avg_speed_kmh"] or 0), 3),
+        "total_orders": int(data["total_orders"] or 0),
+        "speeding_rate": data["speeding_rate"] or "0.00%",
+        "match_score": coord_count,
+    }
+
+
+def peak_road_map_row_to_dict(row):
+    data = row._mapping
+    distance_m = float(data["distance_m"] or 0)
+    coord_count = int(data["coord_count"] or 0)
+    return {
+        "road_id": str(data["road_id"]),
+        "date": str(data["date"]),
+        "slot_30min": str(data["slot_30min"]),
+        "flow_count": float(data["flow_count"] or 0),
+        "flow_level_30min": int(data["flow_level_30min"] or 0),
+        "flow_level_daily": int(data["flow_level_daily"] or 0),
+        "heat_weight_30min": float(data["heat_weight_30min"] or 0),
+        "heat_weight_daily": float(data["heat_weight_daily"] or 0),
+        "distance_m": round(distance_m, 3),
+        "distance_km": round(distance_m / 1000, 3),
+        "match_score": coord_count,
+        "geometry": parse_linestring_geometry(data["route_geom"]),
     }
 
 
@@ -575,12 +707,60 @@ async def get_speeding_roads(
     }
 
 
+@app.get("/api/speeding/road-map")
+async def get_speeding_road_map(
+        road_id: str | None = None,
+        limit: int = Query(200, ge=1, le=2000),
+):
+    where_sql = ""
+    params = {"limit": limit}
+    if road_id:
+        where_sql = "WHERE CAST(rs.road_id AS CHAR) = :road_id"
+        params["road_id"] = road_id
+
+    query = text("""
+        SELECT
+            rs.road_id,
+            rs.total_orders,
+            rs.speeding_orders,
+            rs.avg_speed_kmh,
+            rs.speeding_rate,
+            rg.route_geom,
+            rg.distance_m,
+            rg.coord_count
+        FROM road_speed_table rs
+        LEFT JOIN road_geom_table rg
+          ON CAST(rs.road_id AS CHAR) = CAST(rg.road_id AS CHAR)
+        {where_sql}
+        ORDER BY
+            CAST(REPLACE(rs.speeding_rate, '%', '') AS DECIMAL(10, 2)) DESC,
+            CAST(rs.speeding_orders AS UNSIGNED) DESC,
+            CAST(rs.avg_speed_kmh AS DECIMAL(10, 3)) DESC
+        LIMIT :limit
+    """.format(where_sql=where_sql))
+
+    with engine.connect() as conn:
+        rows = conn.execute(query, params).fetchall()
+
+    return [road_map_row_to_dict(row) for row in rows]
+
+
 @app.get("/api/speeding/road/{road_id}")
 async def get_road_speeding(road_id: str):
     query = text("""
-        SELECT road_id, total_orders, speeding_orders, avg_speed_kmh, speeding_rate
-        FROM road_speed_table
-        WHERE CAST(road_id AS CHAR) = :road_id
+        SELECT
+            rs.road_id,
+            rs.total_orders,
+            rs.speeding_orders,
+            rs.avg_speed_kmh,
+            rs.speeding_rate,
+            rg.route_geom,
+            rg.distance_m,
+            rg.coord_count
+        FROM road_speed_table rs
+        LEFT JOIN road_geom_table rg
+          ON CAST(rs.road_id AS CHAR) = CAST(rg.road_id AS CHAR)
+        WHERE CAST(rs.road_id AS CHAR) = :road_id
         LIMIT 1
     """)
 
@@ -590,7 +770,7 @@ async def get_road_speeding(road_id: str):
     if row is None:
         raise HTTPException(status_code=404, detail="Road ID not found")
 
-    return road_speed_row_to_dict(row)
+    return road_map_row_to_dict(row)
 
 
 @app.get("/api/speeding/by-time")

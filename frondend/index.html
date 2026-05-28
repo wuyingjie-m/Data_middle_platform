@@ -8,6 +8,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script>
+    window._AMapSecurityConfig = {
+      securityJsCode: 'e1fc73586440409ccd38cbb6c34539cd'
+    };
+  </script>
+  <script src="https://webapi.amap.com/maps?v=2.0&key=2a68fddc6308cd97fdfe7ed9158ce440"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
 
@@ -22,7 +28,11 @@
       margin-bottom: 8px;
       color: #5F6368;
     }
-    .nav-btn:hover { background-color: #F0F4F8; }
+
+    .nav-btn:hover {
+      background-color: #F0F4F8;
+    }
+
     .nav-btn.active {
       background-color: #FFB7B2 !important;
       color: #FFFFFF !important;
@@ -34,6 +44,7 @@
       background-color: #B2E2F2;
       transition: transform 0.2s;
     }
+
     .btn-search:hover {
       background-color: #91D1E6;
       transform: translateY(-2px);
@@ -50,7 +61,11 @@
       color: #747D8C;
       transition: all 0.2s ease;
     }
-    .scope-btn:hover { background-color: #F8FAFC; }
+
+    .scope-btn:hover {
+      background-color: #F8FAFC;
+    }
+
     .scope-btn.active {
       background-color: #E1BEE7;
       color: #FFFFFF;
@@ -69,6 +84,7 @@
       border-collapse: collapse;
       font-size: 13px;
     }
+
     .profile-table thead th {
       background: #F7F9FC;
       color: #8A95A3;
@@ -80,16 +96,22 @@
       top: 0;
       z-index: 1;
     }
+
     .profile-table tbody tr {
       border-bottom: 1px solid #F0F2F5;
       transition: background 0.15s;
     }
-    .profile-table tbody tr:hover { background: #FFF5F5; }
+
+    .profile-table tbody tr:hover {
+      background: #FFF5F5;
+    }
+
     .profile-table tbody td {
       padding: 9px 14px;
       color: #4A5568;
       white-space: nowrap;
     }
+
     .star-badge {
       display: inline-block;
       padding: 2px 10px;
@@ -97,11 +119,31 @@
       font-size: 12px;
       font-weight: bold;
     }
-    .star-5 { background: #FFE0B2; color: #E65100; }
-    .star-4 { background: #FFF9C4; color: #F57F17; }
-    .star-3 { background: #E8F5E9; color: #2E7D32; }
-    .star-2 { background: #E3F2FD; color: #1565C0; }
-    .star-1 { background: #F3E5F5; color: #6A1B9A; }
+
+    .star-5 {
+      background: #FFE0B2;
+      color: #E65100;
+    }
+
+    .star-4 {
+      background: #FFF9C4;
+      color: #F57F17;
+    }
+
+    .star-3 {
+      background: #E8F5E9;
+      color: #2E7D32;
+    }
+
+    .star-2 {
+      background: #E3F2FD;
+      color: #1565C0;
+    }
+
+    .star-1 {
+      background: #F3E5F5;
+      color: #6A1B9A;
+    }
 
     /* 指标卡片 */
     .metric-card {
@@ -113,16 +155,42 @@
       flex-direction: column;
       gap: 6px;
     }
-    .metric-label { font-size: 12px; color: #A0AEC0; font-weight: 600; letter-spacing: 0.05em; }
-    .metric-value { font-size: 28px; font-weight: 900; color: #2D3748; line-height: 1; }
-    .metric-unit  { font-size: 13px; color: #A0AEC0; }
+
+    .metric-label {
+      font-size: 12px;
+      color: #A0AEC0;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: #2D3748;
+      line-height: 1;
+    }
+
+    .metric-unit {
+      font-size: 13px;
+      color: #A0AEC0;
+    }
 
     /* 搜索结果淡入 */
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(18px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    .fade-up { animation: fadeUp 0.45s ease both; }
+
+    .fade-up {
+      animation: fadeUp 0.45s ease both;
+    }
 
     /* 图表容器 */
     .chart-box {
@@ -131,22 +199,102 @@
       border: 2px solid #F0F2F5;
       padding: 24px;
     }
-    .chart-box h3 { font-size: 14px; font-weight: 700; color: #718096; margin-bottom: 12px; }
+
+    .chart-box h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #718096;
+      margin-bottom: 12px;
+    }
 
     /* 时段进度条 */
-    .period-bar-wrap { display: flex; flex-direction: column; gap: 10px; }
-    .period-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-    .period-name { width: 36px; color: #718096; font-weight: 600; flex-shrink: 0; }
-    .period-track { flex: 1; height: 14px; background: #F0F2F5; border-radius: 999px; overflow: hidden; }
-    .period-fill  { height: 100%; border-radius: 999px; transition: width 0.8s ease; }
-    .period-cnt   { width: 40px; text-align: right; color: #4A5568; font-weight: 700; font-size: 13px; }
+    .period-bar-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .period-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .period-name {
+      width: 36px;
+      color: #718096;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .period-track {
+      flex: 1;
+      height: 14px;
+      background: #F0F2F5;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .period-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.8s ease;
+    }
+
+    .period-cnt {
+      width: 40px;
+      text-align: right;
+      color: #4A5568;
+      font-weight: 700;
+      font-size: 13px;
+    }
 
     /* 评分进度条 */
-    .score-row  { display: flex; align-items: center; gap: 10px; font-size: 13px; margin-bottom: 8px; }
-    .score-name { width: 120px; color: #718096; font-size: 12px; flex-shrink: 0; }
-    .score-track { flex: 1; height: 10px; background: #F0F2F5; border-radius: 999px; overflow: hidden; }
-    .score-fill  { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #B2E2F2, #CE93D8); transition: width 0.8s ease; }
-    .score-val   { width: 20px; text-align: right; font-weight: 700; color: #2D3748; }
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .score-name {
+      width: 120px;
+      color: #718096;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .score-track {
+      flex: 1;
+      height: 10px;
+      background: #F0F2F5;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #B2E2F2, #CE93D8);
+      transition: width 0.8s ease;
+    }
+
+    .score-val {
+      width: 20px;
+      text-align: right;
+      font-weight: 700;
+      color: #2D3748;
+    }
+
+    .road-map-box {
+      height: 520px;
+      border-radius: 28px;
+      overflow: hidden;
+      border: 2px solid #F0F2F5;
+      background: #F8FAFC;
+    }
   </style>
 </head>
 
@@ -197,12 +345,10 @@
 
         <!-- 搜索栏 -->
         <div class="flex gap-4 mb-8">
-          <input id="devidInput" type="number" placeholder="输入 devid 搜索司机 (如: 3012099)"
-            class="bg-white border-2 border-slate-100 p-4 rounded-2xl flex-1 max-w-sm
+          <input id="devidInput" type="number" placeholder="输入 devid 搜索司机 (如: 3012099)" class="bg-white border-2 border-slate-100 p-4 rounded-2xl flex-1 max-w-sm
                    focus:outline-none focus:border-pink-200 shadow-sm transition-all text-base"
             onkeydown="if(event.key==='Enter') searchDriver()">
-          <button onclick="searchDriver()"
-            class="bg-pink-200 hover:bg-pink-300 text-slate-700 font-bold px-10 py-4
+          <button onclick="searchDriver()" class="bg-pink-200 hover:bg-pink-300 text-slate-700 font-bold px-10 py-4
                    rounded-2xl shadow-lg shadow-pink-100 transition-all hover:-translate-y-0.5">
             <i class="fa-solid fa-magnifying-glass mr-2"></i>查询
           </button>
@@ -239,7 +385,9 @@
                 </tr>
               </thead>
               <tbody id="profile-tbody">
-                <tr><td colspan="13" class="text-center py-8 text-slate-300">加载中...</td></tr>
+                <tr>
+                  <td colspan="13" class="text-center py-8 text-slate-300">加载中...</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -497,6 +645,20 @@
               </div>
             </div>
           </div>
+
+          <div class="mt-6 glass-card p-8 shadow-xl shadow-slate-100/50">
+            <div class="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 class="text-2xl font-black text-slate-800">道路风险地图</h3>
+                <p id="roadMapStatus" class="text-sm text-slate-400 mt-1">等待加载高德地图</p>
+              </div>
+              <button onclick="loadRoadMap()" class="btn-search h-11 w-11 rounded-2xl shadow-md shadow-blue-100"
+                title="刷新地图">
+                <i class="fa-solid fa-map-location-dot"></i>
+              </button>
+            </div>
+            <div id="roadRiskMap" class="road-map-box"></div>
+          </div>
         </div>
       </div>
 
@@ -576,6 +738,25 @@
               <div id="dailyTopList" class="mt-4 space-y-2 max-h-[360px] overflow-y-auto"></div>
             </div>
           </div>
+
+          <div class="mt-8 bg-white rounded-3xl p-6 border border-slate-100">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 class="text-xl font-bold text-slate-800">道路匹配地图</h3>
+                <p id="peakMapStatus" class="text-sm text-slate-400 mt-1">等待加载高峰道路地图</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <select id="peakMapDateSelect"
+                  class="bg-white border-2 border-slate-100 p-2 rounded-xl w-40 focus:outline-none focus:border-blue-200 shadow-sm"></select>
+                <select id="peakMapSlotSelect"
+                  class="bg-white border-2 border-slate-100 p-2 rounded-xl w-40 focus:outline-none focus:border-blue-200 shadow-sm"></select>
+                <button onclick="loadPeakRoadMap()" class="btn-search text-slate-700 font-bold px-5 py-2 rounded-xl shadow">
+                  查询
+                </button>
+              </div>
+            </div>
+            <div id="peakRoadMap" class="road-map-box"></div>
+          </div>
         </div>
       </div>
 
@@ -590,6 +771,15 @@
     const DEFAULT_SLOT = '10:00-10:30';
     const API_BASE_URL = 'http://49.52.27.112:8000';
     let currentSpeedingScope = 'order';
+    let roadMap = null;
+    let roadInfoWindow = null;
+    let roadMapLines = [];
+    let roadHighlightLine = null;
+    let peakMap = null;
+    let peakInfoWindow = null;
+    let peakMapLines = [];
+    let peakHighlightLine = null;
+    let peakRoadMapData = [];
 
     // ──────────────────────────────────────────────────────
     // 用户画像常量
@@ -598,7 +788,7 @@
       morning: '早晨', afternoon: '下午', evening: '傍晚', night: '夜间'
     };
     const STAR_LABELS = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
-    const ACTIVE_MAP   = { 1: '不活跃', 2: '较不活跃', 3: '一般活跃', 4: '较活跃', 5: '非常活跃' };
+    const ACTIVE_MAP = { 1: '不活跃', 2: '较不活跃', 3: '一般活跃', 4: '较活跃', 5: '非常活跃' };
     const ACTIVE_STYLE = {
       1: 'background:#F3F4F6;color:#9CA3AF',
       2: 'background:#DBEAFE;color:#1D4ED8',
@@ -703,9 +893,9 @@
       const levelClass = `star-${d.active_level}`;
       const scoreLevel = d.driver_score_level || '-';
       const scoreLevelClass = `star-${Math.min(5, Math.max(1, Number(scoreLevel) || 1))}`;
-      const speedPct  = d.speeding_rate !== undefined ? (Number(d.speeding_rate) * 100).toFixed(1) + '%' : '-';
-      const detourPct = d.detour_rate   !== undefined ? (Number(d.detour_rate)   * 100).toFixed(1) + '%' : '-';
-      const ruleOk    = (d.speeding_rule || '').toLowerCase() === 'normal';
+      const speedPct = d.speeding_rate !== undefined ? (Number(d.speeding_rate) * 100).toFixed(1) + '%' : '-';
+      const detourPct = d.detour_rate !== undefined ? (Number(d.detour_rate) * 100).toFixed(1) + '%' : '-';
+      const ruleOk = (d.speeding_rule || '').toLowerCase() === 'normal';
 
       container.innerHTML = `
       <div class="fade-up space-y-6">
@@ -754,15 +944,15 @@
 
         <!-- 安全 + 综合评分指标卡 -->
         <div class="grid grid-cols-4 gap-4">
-          <div class="metric-card" style="border-color:${Number(d.speeding_rate)===0?'#C8E6C9':'#FFCCBC'}">
+          <div class="metric-card" style="border-color:${Number(d.speeding_rate) === 0 ? '#C8E6C9' : '#FFCCBC'}">
             <span class="metric-label">超速率</span>
-            <span class="metric-value" style="color:${Number(d.speeding_rate)===0?'#2E7D32':'#E65100'}">${speedPct}</span>
-            <span class="metric-unit" style="color:${ruleOk?'#2E7D32':'#B71C1C'}">${ruleOk?'规律正常':'规律异常'}</span>
+            <span class="metric-value" style="color:${Number(d.speeding_rate) === 0 ? '#2E7D32' : '#E65100'}">${speedPct}</span>
+            <span class="metric-unit" style="color:${ruleOk ? '#2E7D32' : '#B71C1C'}">${ruleOk ? '规律正常' : '规律异常'}</span>
           </div>
-          <div class="metric-card" style="border-color:${Number(d.detour_rate)>0.3?'#FFCCBC':'#BBDEFB'}">
+          <div class="metric-card" style="border-color:${Number(d.detour_rate) > 0.3 ? '#FFCCBC' : '#BBDEFB'}">
             <span class="metric-label">绕路率</span>
-            <span class="metric-value" style="color:${Number(d.detour_rate)>0.3?'#B71C1C':'#1565C0'}">${detourPct}</span>
-            <span class="metric-unit">${Number(d.detour_rate)>0.3?'偏高':'正常'}</span>
+            <span class="metric-value" style="color:${Number(d.detour_rate) > 0.3 ? '#B71C1C' : '#1565C0'}">${detourPct}</span>
+            <span class="metric-unit">${Number(d.detour_rate) > 0.3 ? '偏高' : '正常'}</span>
           </div>
           <div class="metric-card" style="border-color:#E8EAF6">
             <span class="metric-label">整体打分</span>
@@ -799,10 +989,10 @@
 
       // 渲染时段进度条
       const periods = [
-        { name: '早晨', val: d.morning_trip_cnt,   color: '#FFDAB9' },
-        { name: '下午', val: d.afternoon_trip_cnt,  color: '#B2E2F2' },
-        { name: '傍晚', val: d.evening_trip_cnt,    color: '#FFB7B2' },
-        { name: '夜间', val: d.night_trip_cnt,      color: '#CE93D8' },
+        { name: '早晨', val: d.morning_trip_cnt, color: '#FFDAB9' },
+        { name: '下午', val: d.afternoon_trip_cnt, color: '#B2E2F2' },
+        { name: '傍晚', val: d.evening_trip_cnt, color: '#FFB7B2' },
+        { name: '夜间', val: d.night_trip_cnt, color: '#CE93D8' },
       ];
       const maxVal = Math.max(...periods.map(p => p.val));
       const periodWrap = document.getElementById(`period-bars-${d.devid}`);
@@ -810,7 +1000,7 @@
         <div class="period-row">
           <span class="period-name">${p.name}</span>
           <div class="period-track">
-            <div class="period-fill" style="width:${(p.val/maxVal*100).toFixed(1)}%; background:${p.color}"></div>
+            <div class="period-fill" style="width:${(p.val / maxVal * 100).toFixed(1)}%; background:${p.color}"></div>
           </div>
           <span class="period-cnt">${p.val}</span>
         </div>`).join('');
@@ -819,7 +1009,7 @@
       const scores = [
         { name: '行程次数评分', val: d.trip_count_score },
         { name: '日均行程评分', val: d.daily_trip_avg_score },
-        { name: '总里程评分',   val: d.precise_total_dist_km_score },
+        { name: '总里程评分', val: d.precise_total_dist_km_score },
         { name: '日均里程评分', val: d.daily_dist_avg_score },
       ];
       const scoreWrap = document.getElementById(`score-bars-${d.devid}`);
@@ -950,7 +1140,7 @@
       document.querySelectorAll('.speeding-panel').forEach(panel => panel.classList.add('hidden'));
 
       const buttonMap = { order: 'scopeOrderBtn', driver: 'scopeDriverBtn', road: 'scopeRoadBtn' };
-      const panelMap  = { order: 'speedingPanelOrder', driver: 'speedingPanelDriver', road: 'speedingPanelRoad' };
+      const panelMap = { order: 'speedingPanelOrder', driver: 'speedingPanelDriver', road: 'speedingPanelRoad' };
 
       document.getElementById(buttonMap[scope]).classList.add('active');
       document.getElementById(panelMap[scope]).classList.remove('hidden');
@@ -1045,13 +1235,14 @@
       try {
         hideSpeedingStatus();
         const sortBy = document.getElementById('roadSort')?.value || 'risk';
-        const response = await fetch(`${API_BASE_URL}/api/speeding/roads?high_risk_only=true&sort_by=${encodeURIComponent(sortBy)}&limit=80`);
+        const response = await fetch(`${API_BASE_URL}/api/speeding/roads?high_risk_only=true&sort_by=${encodeURIComponent(sortBy)}&limit=5`);
         if (!response.ok) throw new Error('roads request failed');
 
         const data = await response.json();
         document.getElementById('summaryFourthLabel').textContent = '高风险道路';
         document.getElementById('summaryFourthValue').textContent = formatNumber(data.high_risk_roads);
         renderRoadTable(data.roads || []);
+        await loadRoadMap();
       } catch (err) {
         console.error(err);
         document.getElementById('roadTableBody').innerHTML = '<tr><td colspan="5" class="py-8 text-center text-red-400 font-bold">无法加载高风险道路</td></tr>';
@@ -1069,7 +1260,7 @@
         const highRisk = Number(road.speeding_orders || 0) > 0;
         const rate = Number(road.speeding_rate_percent || 0);
         return `
-          <tr class="${highRisk ? 'bg-red-50/50' : 'hover:bg-green-50/40'} transition-colors">
+          <tr onclick="fetchRoadSpeedingById('${escapeHtml(road.road_id)}')" class="${highRisk ? 'bg-red-50/50' : 'hover:bg-green-50/40'} transition-colors cursor-pointer">
             <td class="py-4 font-black text-slate-700">${escapeHtml(road.road_id)}</td>
             <td class="py-4">${formatNumber(road.total_orders)}</td>
             <td class="py-4 font-bold">${Number(road.avg_speed_kmh || 0).toFixed(3)} km/h</td>
@@ -1084,9 +1275,13 @@
     async function fetchRoadSpeeding() {
       const roadId = document.getElementById('roadSpeedingInput').value.trim();
       if (!roadId) { showSpeedingStatus('请输入道路 ID。'); return; }
+      await fetchRoadSpeedingById(roadId);
+    }
 
+    async function fetchRoadSpeedingById(roadId) {
       try {
         hideSpeedingStatus();
+        document.getElementById('roadSpeedingInput').value = roadId;
         const response = await fetch(`${API_BASE_URL}/api/speeding/road/${encodeURIComponent(roadId)}`);
         if (response.status === 404) {
           document.getElementById('roadResult').innerHTML = `
@@ -1098,6 +1293,7 @@
         if (!response.ok) throw new Error('road request failed');
         const road = await response.json();
         renderRoadResult(road);
+        highlightRoadOnMap(road);
       } catch (err) {
         console.error(err);
         showSpeedingStatus('无法查询道路超速数据，请检查 FastAPI 服务连接。');
@@ -1128,7 +1324,128 @@
             <p class="text-xs text-slate-400 font-bold">超速率</p>
             <p class="text-2xl font-black text-red-400 mt-1">${escapeHtml(road.speeding_rate || '0.00%')}</p>
           </div>
+          <div class="bg-white rounded-3xl p-5 col-span-2">
+            <p class="text-xs text-slate-400 font-bold">路段距离</p>
+            <p class="text-2xl font-black text-slate-800 mt-1">${Number(road.distance_km || 0).toFixed(3)} km</p>
+          </div>
         </div>`;
+    }
+
+    function setRoadMapStatus(message, isError = false) {
+      const status = document.getElementById('roadMapStatus');
+      if (!status) return;
+      status.textContent = message;
+      status.className = `text-sm mt-1 ${isError ? 'text-red-400 font-bold' : 'text-slate-400'}`;
+    }
+
+    function initRoadMap() {
+      if (roadMap) return true;
+      if (!window.AMap) {
+        setRoadMapStatus('高德地图脚本加载失败，请检查 Key、securityJsCode 或网络。', true);
+        return false;
+      }
+
+      roadMap = new AMap.Map('roadRiskMap', {
+        zoom: 12,
+        center: [126.63, 45.75],
+        viewMode: '2D'
+      });
+      roadInfoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -8) });
+      return true;
+    }
+
+    function getRoadLineColor(road) {
+      const rate = Number(road.speeding_rate_percent || 0);
+      if (rate >= 20) return '#ef4444';
+      if (rate >= 10) return '#f59e0b';
+      return '#8b5cf6';
+    }
+
+    function clearRoadMapLines() {
+      if (!roadMap || roadMapLines.length === 0) return;
+      roadMap.remove(roadMapLines);
+      roadMapLines = [];
+      roadHighlightLine = null;
+    }
+
+    async function loadRoadMap(roadId = '') {
+      if (!initRoadMap()) return;
+      try {
+        setRoadMapStatus('正在加载真实路段线...');
+        const params = new URLSearchParams({ limit: roadId ? '1' : '200' });
+        if (roadId) params.set('road_id', roadId);
+        const response = await fetch(`${API_BASE_URL}/api/speeding/road-map?${params.toString()}`);
+        if (!response.ok) throw new Error('road map request failed');
+
+        const roads = await response.json();
+        clearRoadMapLines();
+
+        roads.filter(road => Array.isArray(road.geometry) && road.geometry.length >= 2).forEach(road => {
+          const line = new AMap.Polyline({
+            path: road.geometry,
+            strokeColor: getRoadLineColor(road),
+            strokeWeight: Math.min(10, 4 + Math.log10(Number(road.speeding_orders || 0) + Number(road.match_score || 1))),
+            strokeOpacity: 0.88,
+            lineJoin: 'round',
+            lineCap: 'round',
+            extData: road
+          });
+
+          line.on('click', () => {
+            const data = line.getExtData();
+            showRoadInfoWindow(data, data.geometry[Math.floor(data.geometry.length / 2)]);
+            fetchRoadSpeedingById(data.road_id);
+          });
+
+          roadMapLines.push(line);
+        });
+
+        if (roadMapLines.length > 0) {
+          roadMap.add(roadMapLines);
+          roadMap.setFitView(roadMapLines, false, [60, 60, 60, 60]);
+          setRoadMapStatus(`已加载 ${roadMapLines.length} 条真实路段线`);
+        } else {
+          setRoadMapStatus('当前条件下没有可展示的路段几何。', true);
+        }
+      } catch (err) {
+        console.error(err);
+        setRoadMapStatus('道路地图数据加载失败，请确认 road_geom_table 已导入。', true);
+      }
+    }
+
+    function showRoadInfoWindow(road, position) {
+      if (!roadInfoWindow || !position) return;
+      roadInfoWindow.setContent(`
+        <div class="text-sm leading-6">
+          <div class="font-black text-slate-800">道路 ${escapeHtml(road.road_id)}</div>
+          <div>距离：${Number(road.distance_km || 0).toFixed(3)} km</div>
+          <div>均速：${Number(road.avg_speed_kmh || 0).toFixed(3)} km/h</div>
+          <div>超速率：${Number(road.speeding_rate_percent || 0).toFixed(2)}%</div>
+          <div>超速订单：${formatNumber(road.speeding_orders)}</div>
+        </div>
+      `);
+      roadInfoWindow.open(roadMap, position);
+    }
+
+    async function highlightRoadOnMap(road) {
+      if (!road || !Array.isArray(road.geometry) || road.geometry.length < 2) {
+        await loadRoadMap(String(road?.road_id || ''));
+        return;
+      }
+      if (!initRoadMap()) return;
+      if (roadHighlightLine) roadMap.remove(roadHighlightLine);
+
+      roadHighlightLine = new AMap.Polyline({
+        path: road.geometry,
+        strokeColor: '#0f172a',
+        strokeWeight: 9,
+        strokeOpacity: 0.95,
+        lineJoin: 'round',
+        lineCap: 'round'
+      });
+      roadMap.add(roadHighlightLine);
+      roadMap.setFitView([roadHighlightLine], false, [80, 80, 80, 80]);
+      showRoadInfoWindow(road, road.geometry[Math.floor(road.geometry.length / 2)]);
     }
 
     async function loadSpeedingBreakdowns() {
@@ -1268,24 +1585,45 @@
       initSlotSelect();
       await initDateSelect();
       await refreshReport();
+      await loadPeakRoadMap();
     }
 
     function initSlotSelect() {
       const select = document.getElementById('slotSelect');
-      if (!select || select.options.length > 0) return;
+      const mapSelect = document.getElementById('peakMapSlotSelect');
       const slots = buildSlots();
-      select.innerHTML = slots.map(slot => `<option value="${slot}">${slot}</option>`).join('');
-      select.value = DEFAULT_SLOT;
+      const slotOptions = slots.map(slot => `<option value="${slot}">${slot}</option>`).join('');
+      if (select && select.options.length === 0) {
+        select.innerHTML = slotOptions;
+        select.value = DEFAULT_SLOT;
+      }
+      if (mapSelect && mapSelect.options.length === 0) {
+        mapSelect.innerHTML = slotOptions;
+        mapSelect.value = DEFAULT_SLOT;
+      }
     }
 
     async function initDateSelect() {
       const select = document.getElementById('dateSelect');
-      if (!select || select.options.length > 0) return;
+      const mapSelect = document.getElementById('peakMapDateSelect');
+      if (select && select.options.length > 0) {
+        if (mapSelect && mapSelect.options.length === 0) {
+          mapSelect.innerHTML = Array.from(select.options)
+            .map(option => `<option value="${option.value}">${option.textContent}</option>`)
+            .join('');
+          mapSelect.value = select.value;
+        }
+        return;
+      }
+      if (!select) return;
       try {
         const response = await fetch(`${API_BASE_URL}/api/report/dates`);
         if (!response.ok) throw new Error('Failed to fetch dates');
         const dates = await response.json();
         select.innerHTML = dates.map(date => `<option value="${date}">${date}</option>`).join('');
+        if (mapSelect && mapSelect.options.length === 0) {
+          mapSelect.innerHTML = dates.map(date => `<option value="${date}">${date}</option>`).join('');
+        }
       } catch (err) {
         console.error(err);
         alert('日期列表加载失败，请检查后端服务。');
@@ -1294,6 +1632,153 @@
 
     function getSelectedDate() {
       return document.getElementById('dateSelect').value;
+    }
+
+    function setPeakMapStatus(message, isError = false) {
+      const status = document.getElementById('peakMapStatus');
+      if (!status) return;
+      status.textContent = message;
+      status.className = `text-sm mt-1 ${isError ? 'text-red-400 font-bold' : 'text-slate-400'}`;
+    }
+
+    function initPeakMap() {
+      if (peakMap) return true;
+      if (!window.AMap) {
+        setPeakMapStatus('高德地图脚本加载失败，请检查 Key、securityJsCode 或网络。', true);
+        return false;
+      }
+
+      peakMap = new AMap.Map('peakRoadMap', {
+        zoom: 12,
+        center: [126.63, 45.75],
+        viewMode: '2D'
+      });
+      peakInfoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -8) });
+      return true;
+    }
+
+    function getPeakRoadLineColor(road) {
+      const level = Number(road.flow_level_30min || 0);
+      if (level >= 5) return '#ef4444';
+      return '#facc15';
+    }
+
+    function clearPeakRoadMapLines() {
+      if (!peakMap) return;
+      if (peakMapLines.length > 0) {
+        peakMap.remove(peakMapLines);
+        peakMapLines = [];
+      }
+      if (peakHighlightLine) {
+        peakMap.remove(peakHighlightLine);
+        peakHighlightLine = null;
+      }
+    }
+
+    function showPeakRoadInfoWindow(road, position) {
+      if (!peakInfoWindow || !position) return;
+      peakInfoWindow.setContent(`
+        <div class="text-sm leading-6">
+          <div class="font-black text-slate-800">道路 ${escapeHtml(road.road_id)}</div>
+          <div>时段：${escapeHtml(road.date)} / ${escapeHtml(road.slot_30min)}</div>
+          <div>流量：${Number(road.flow_count || 0).toFixed(0)}</div>
+          <div>高峰等级：${Number(road.flow_level_30min || 0)}</div>
+          <div>日等级：${Number(road.flow_level_daily || 0)}</div>
+          <div>热力权重：${Number(road.heat_weight_30min || 0).toFixed(2)}</div>
+          <div>路段距离：${Number(road.distance_km || 0).toFixed(3)} km</div>
+        </div>
+      `);
+      peakInfoWindow.open(peakMap, position);
+    }
+
+    async function loadPeakRoadMap(roadId = '') {
+      if (!initPeakMap()) return;
+      const selectedDate = document.getElementById('peakMapDateSelect')?.value || getSelectedDate();
+      const slot = document.getElementById('peakMapSlotSelect')?.value || DEFAULT_SLOT;
+      const params = new URLSearchParams({
+        date: selectedDate,
+        slot_30min: slot,
+        limit: roadId ? '1' : '10000',
+        min_flow_level_30min: '4'
+      });
+      if (roadId) params.set('road_id', roadId);
+
+      try {
+        setPeakMapStatus('正在加载哈尔滨高峰道路匹配线...');
+        const response = await fetch(`${API_BASE_URL}/api/report/road-map?${params.toString()}`);
+        if (!response.ok) throw new Error('peak road map request failed');
+
+        const roads = await response.json();
+        if (!roadId) peakRoadMapData = roads;
+        clearPeakRoadMapLines();
+
+        roads.filter(road => Array.isArray(road.geometry) && road.geometry.length >= 2).forEach(road => {
+          const line = new AMap.Polyline({
+            path: road.geometry,
+            strokeColor: getPeakRoadLineColor(road),
+            strokeWeight: Math.min(11, 4 + Math.log10(Number(road.flow_count || 0) + Number(road.match_score || 1))),
+            strokeOpacity: 0.9,
+            lineJoin: 'round',
+            lineCap: 'round',
+            extData: road
+          });
+
+          line.on('click', () => {
+            const data = line.getExtData();
+            showPeakRoadInfoWindow(data, data.geometry[Math.floor(data.geometry.length / 2)]);
+          });
+
+          peakMapLines.push(line);
+        });
+
+        if (peakMapLines.length > 0) {
+          peakMap.add(peakMapLines);
+          peakMap.setFitView(peakMapLines, false, [60, 60, 60, 60]);
+          const status = document.getElementById('peakMapStatus');
+          if (status) {
+            status.innerHTML = '当前时段下高峰等级为4和5的路段：<span class="inline-flex items-center gap-1 ml-2"><span class="inline-block w-3 h-3 rounded-full" style="background:#facc15"></span>等级4</span><span class="inline-flex items-center gap-1 ml-4"><span class="inline-block w-3 h-3 rounded-full" style="background:#ef4444"></span>等级5</span>';
+            status.className = 'text-sm mt-1 text-slate-400';
+          }
+          if (roadId && roads[0]) highlightPeakRoadOnMap(roads[0]);
+        } else if (roadId) {
+          setPeakMapStatus(`道路 ${roadId} 暂无匹配几何。`, true);
+        } else {
+          setPeakMapStatus('当前条件下没有可展示的道路几何。', true);
+        }
+      } catch (err) {
+        console.error(err);
+        setPeakMapStatus('高峰道路地图数据加载失败，请确认 tdm_tag_road_flow 和 road_geom_table 已导入。', true);
+      }
+    }
+
+    function highlightPeakRoadOnMap(road) {
+      if (!road || !Array.isArray(road.geometry) || road.geometry.length < 2) {
+        setPeakMapStatus(`道路 ${road?.road_id || ''} 暂无匹配几何。`, true);
+        return;
+      }
+      if (!initPeakMap()) return;
+      if (peakHighlightLine) peakMap.remove(peakHighlightLine);
+
+      peakHighlightLine = new AMap.Polyline({
+        path: road.geometry,
+        strokeColor: '#0f172a',
+        strokeWeight: 10,
+        strokeOpacity: 0.95,
+        lineJoin: 'round',
+        lineCap: 'round'
+      });
+      peakMap.add(peakHighlightLine);
+      peakMap.setFitView([peakHighlightLine], false, [80, 80, 80, 80]);
+      showPeakRoadInfoWindow(road, road.geometry[Math.floor(road.geometry.length / 2)]);
+    }
+
+    async function highlightPeakRoadById(roadId) {
+      const road = peakRoadMapData.find(item => String(item.road_id) === String(roadId));
+      if (road) {
+        highlightPeakRoadOnMap(road);
+        return;
+      }
+      await loadPeakRoadMap(String(roadId || ''));
     }
 
     function renderTopList(containerId, rows) {
